@@ -1,47 +1,88 @@
 use std::net::{TcpStream};
-use std::io::{Read, Write};
-use std::str::from_utf8;
 use std::collections::HashSet;
-use std::env;
-
+use rand::Rng;
+use std::fmt::{ self, Debug, Formatter};
+use std::String
 /** Miner
  Gestion des sockets
-
-
-
 */
 
 pub struct Miner {
     pub id: u32,
-    pub network: HashSet
+    pub network: HashSet<u32>,
 }
 
+pub fn create_miner(address: std::String) {
+    println!("Miner creation...");
+    let miner = Miner::new();
+    println!("{:?}", &miner);
 
+
+}
 
 impl Miner {
    
-    fn new (id: u32,network : HashSet) -> Self {
-
-        self.init_network();
+    fn new () -> Self {
+        let mut rng = rand::thread_rng();
+        
+        // self.init_network();
         // id = max(network)+1;
         
-
         return Miner {
-           id,
-           network,
+           id: rng.gen::<u32>(),
+           network: HashSet::<u32>::new(),
         }
     }
 
+   
+
     fn init_network() {
         // Ping all neigbhors to create first network map 
+    }
+
+    fn listen(address: std::String) {
+    let listener = TcpListener::bind(address).unwrap();
+    // accept connections and process them, spawning a new thread for each one
+    println!("Miner listening on {}", address);
+    for stream in listener.incoming() {
+        match stream {
+            Ok(stream) => {
+                
+                println!("New connection: {}", stream.peer_addr().unwrap());
+                handle_client(stream);
+                
+                //thread::spawn(move|| {
+                    // connection succeeded
+                //});
+            }
+            Err(e) => {
+                println!("Error: {}", e);
+                /* connection failed */
+            }
+        }
+    }
+    // close the socket server
+    drop(listener);
     }
 
     fn handle_connection(mut stream: TcpStream) {
          
     }
     
-    fn get_network() -> HashSet<u32> {
-        &self.network;
+    pub fn get_network(&self) -> &HashSet<u32> {
+        return &self.network;
     }
    
+    pub fn get_id(&self) -> &u32 {
+        return &self.id;
+    } 
+}
+
+impl Debug for Miner {
+    fn fmt (&self, f: &mut Formatter) -> fmt::Result {
+        write!(f, "Miner[{}]: \n Network:",
+            &self.id,
+            // &self.network,
+        )
+    }
 }
