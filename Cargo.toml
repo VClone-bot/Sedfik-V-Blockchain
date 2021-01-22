@@ -1,0 +1,14 @@
+[package]
+name = "Blockchain"
+version = "0.1.0"
+authors = ["Barthet Virgile <virgile.barthet@u-psud.fr>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+name = "blocklib"
+path = "src/block.rs"
+
+[dependencies]
+hex = "0.4.2"
