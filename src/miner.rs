@@ -1,47 +1,51 @@
-use std::net::{TcpStream};
-use std::io::{Read, Write};
-use std::str::from_utf8;
-use std::collections::HashSet;
-use std::env;
+use std::net::{TcpStream, TcpListener};
+use std::thread;
 
-/** Miner
- Gestion des sockets
-
-
-
-*/
+#[path="./block.rs"]
+mod block;
 
 pub struct Miner {
-    pub id: u32,
-    pub network: HashSet
+    pub id: u32, // Our ID
+    pub network: Vec<u32>, // The IDs of every member of the network, always unique
+    pub blocks: Vec<block::Block>, // The blocks calculated by us
+    pub socket: Option<TcpListener>, // Listener for Tcp transactions
+    pub connection: Option<u32>, // ID of the miner to which we are connected
 }
-
-
 
 impl Miner {
    
-    fn new (id: u32,network : HashSet) -> Self {
-
-        self.init_network();
-        // id = max(network)+1;
-        
-
+    pub fn new () -> Self {
         return Miner {
-           id,
-           network,
+           id: 0,
+           network: Vec::new(),
+           blocks: Vec::new(),
+           socket: None,
+           connection: None,
         }
     }
 
-    fn init_network() {
-        // Ping all neigbhors to create first network map 
+    ////////// NETWORKING
+
+    /** 
+     * Used to create a new network if the miner if the genesis of the network
+    */
+    pub fn create_network(self) {
+        
     }
 
-    fn handle_connection(mut stream: TcpStream) {
-         
+    /** 
+     * Used to join an existing network, ask for a copy everyone's network to the network
+    */
+    pub fn join_network(self) {
+
     }
-    
-    fn get_network() -> HashSet<u32> {
-        &self.network;
+
+    pub fn init_network(self) {
+
+    }
+
+    pub fn handle_connection(self, stream: TcpStream) {
+         
     }
    
 }
