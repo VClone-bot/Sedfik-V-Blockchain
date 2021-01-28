@@ -1,63 +1,81 @@
-use std::net::{TcpStream, TcpListener};
+use std::net::{TcpStream, TcpListener, Shutdown};
+use std::fmt::{self, Debug, Formatter};
+use std::io::{Read, Write};
+use rand::Rng;
 
 #[path="./block.rs"]
 mod block;
 
 pub struct Miner {
     pub id: u32, // Our ID
-    pub network: Vec<u32>, // The IDs of every member of the network, always unique
+    pub network: Vec<String>, // The IDs of every member of the network, always unique
     pub blocks: Vec<block::Block>, // The blocks calculated by us
     pub socket: TcpListener, // Listener for Tcp transactions
-    pub connection: Option<TcpStream>, // ID of the miner to which we are connected
+}
+
+pub fn create_miner(socket: String) {
+    println!("Miner creation...");
+    let miner = Miner::new(socket);
+    println!("{:?}", &miner);
+}
+
+pub fn join_miner(socket: String, destination: String) {
+    println!("Joining miner...");
+    let miner = Miner::new(socket);
+    miner.join(destination);
+    println!("{:?}", &miner);
 }
 
 impl Miner {
    
     ////////// NETWORKING
 
-    /** 
-     * Dispatch between joining and creating a new network
-     */
-    pub fn new (&self, role: String, socket: String, connection: String) -> Self {
-        if role == "creator" {
-            return self.create_network(socket, connection);
-        } else if role == "joiner" {
-            return self.join_network(socket, connection);
-        }
-    }
-
-    /** 
-     * Used to create a new network if the miner is the genesis of the network
-    */
-    pub fn create_network(&self, socket: String, connection: String) -> Self {
+    // CTOR
+    pub fn new (socket: String) -> Self {
+        let mut rng = rand::thread_rng();
         return Miner {
-            0,
-            Vec::new(),
-            Vec::new(),
-            TcpListener::bind(socket).unwrap();,
-            None,
+            id: rng.gen::<u32>(),
+            network: Vec::new(),
+            blocks: Vec::new(),
+            socket: TcpListener::bind(socket).unwrap(),
         }
     }
 
-    /** 
-     * Used to join an existing network, ask for a copy everyone's network to the network
-    */
-    pub fn join_network(socket: String, connection: String) -> Self {
-        return Miner {
-            0,
-            Vec::new(),
-            Vec::new();
-            TcpListener::bind(socket).unwrap();,
-            TcpStream::connect("127.0.0.1:34254")?,
+    pub fn join(&self, destination: String) {
+        if let Ok(stream) = TcpStream::connect(&destination) {
+            println!("Réseau {} rejoint !", &destination);
+
+        } else {
+            println!("Connexion au réseau {} impossible", &destination);
         }
     }
 
-    pub fn init_network(self) {
+    pub fn init_network(&self) {
 
     }
 
-    pub fn handle_connection(self, stream: TcpStream) {
-         
+    pub fn handle_connection(&self, mut stream: TcpStream) {
+        let mut data = [0 as u8; 50];
+        while match stream.read(&mut data) {
+            Ok(size) => {
+                stream.write(&data[0..size]).unwrap();
+                true
+            },
+            Err(_) => {
+                println!("Une erreur est survenue, fermeture de la connexion");
+                stream.shutdown(Shutdown::Both).unwrap();
+                false
+            }
+        } {}
     }
    
+}
+
+impl Debug for Miner {
+    fn fmt (&self, f: &mut Formatter) -> fmt::Result {
+        write!(f, "Miner[{}]: \n Network:",
+            &self.id,
+            // &self.network,
+        )
+    }
 }

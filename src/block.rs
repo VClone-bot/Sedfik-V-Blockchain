@@ -1,4 +1,4 @@
-use std::fmt::{ self, Debug, Formatter};
+use std::fmt::{self, Debug, Formatter};
 
 /** Bloc: composants de la BlockChain
  * Composants d'un bloc

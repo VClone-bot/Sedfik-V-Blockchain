@@ -26,7 +26,7 @@ fn main() {
     }
 
     let mut role = ""; // {--create, -c} pour créer un réseau, {--join, -j} pour en rejoindre un existant
-    let mut socket = &args[2]; // L'ip:port du socket sur lequel le miner va écouter
+    let socket = &args[2]; // L'ip:port du socket sur lequel le miner va écouter
     
     if &args[1] == "-c" || &args[1] == "--create" {
         role = "creator";
@@ -37,8 +37,8 @@ fn main() {
         return ();
     }
 
-    if role == "creator" {
-        let mut address = &args[3]; // L'ip:port à laquelle le miner va se connecter 
+    if role == "joiner" {
+        let address = &args[3]; // L'ip:port à laquelle le miner va se connecter 
     }
 
     //si role == -c -> créer réseau
