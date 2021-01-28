@@ -17,18 +17,29 @@ fn main() {
     if args.len() == 1 {
         println!("miner: no operation specified");
         return ();
-    } else if args.len() == 2 && &args[1] == "-j" || &args[1] == "--join" {
+    } else if args.len() == 2 {
         println!("miner: must specify an IP and a port to join a network");
         return ();
-    } else if args.len() > 3 {
+    } else if args.len() > 4 {
         println!("miner: too many arguments specified");
         return ();
     }
 
-    let role = &args[1]; // {--create, -c} pour créer un réseau, {--join, -j} pour en rejoindre un existant
-    let mut socket = ""; // L'ip:port du socket sur lequel le miner va écouter
-    let mut address = ""; // L'ip:port à laquelle le miner va se connecter (vide si création du network)
-     
+    let mut role = ""; // {--create, -c} pour créer un réseau, {--join, -j} pour en rejoindre un existant
+    let mut socket = &args[2]; // L'ip:port du socket sur lequel le miner va écouter
+    
+    if &args[1] == "-c" || &args[1] == "--create" {
+        role = "creator";
+    } else if &args[1] == "-j" || &args[1] == "--join" {
+        role = "joiner";
+    } else {
+        println!("miner: operation not recognized");
+        return ();
+    }
+
+    if role == "creator" {
+        let mut address = &args[3]; // L'ip:port à laquelle le miner va se connecter 
+    }
 
     //si role == -c -> créer réseau
     //si role == -j & ip donnée -> rejoindre le réseau
