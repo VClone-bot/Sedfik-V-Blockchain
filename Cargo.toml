@@ -9,3 +9,4 @@ edition = "2018"
 [dependencies]
 hex = "0.4.2"
 rand = "0.8.2"
+crossbeam-utils = "0.8.1"

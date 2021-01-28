@@ -2,10 +2,6 @@ use std::env;
 
 mod miner;
 
-fn print_help() {
-    println!("Lol");
-}
-
 fn main() {
 
     //let block = Block::new(0, "Premier bloc".to_owned(), 0, 0, vec![0; 32]);
@@ -25,8 +21,10 @@ fn main() {
         return ();
     }
 
-    let mut role = ""; // {--create, -c} pour créer un réseau, {--join, -j} pour en rejoindre un existant
+    let role; // {--create, -c} pour créer un réseau, {--join, -j} pour en rejoindre un existant
     let socket = &args[2]; // L'ip:port du socket sur lequel le miner va écouter
+    let mut address = &args[2];
+    let miner: miner::Miner;
     
     if &args[1] == "-c" || &args[1] == "--create" {
         role = "creator";
@@ -38,24 +36,16 @@ fn main() {
     }
 
     if role == "joiner" {
-        let address = &args[3]; // L'ip:port à laquelle le miner va se connecter 
+        address = &args[3];
     }
 
-    //si role == -c -> créer réseau
-    //si role == -j & ip donnée -> rejoindre le réseau
-    //sinon écrire une erreur et renvoyer unit
-    if role == "-c" || role == "--create" {
-        let test: Vec<u32> = (0..10).collect();
-    } else if role == "-j" || role == "--join" {
-        let test: Vec<u32> = (0..10).collect();
-    } else if role == "--help" {
-        print_help();
-        return ();
+    if role == "creator" {
+        miner = miner::create_miner(socket.to_string());
     } else {
-        println!("miner: the command {} is unknown, please see miner --help", role);
-        return ();
+        miner = miner::join_miner(socket.to_string(), address.to_string());
     }
-
     
+    miner.listen();
 
+    return ();
 }
