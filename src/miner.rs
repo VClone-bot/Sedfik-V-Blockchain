@@ -52,7 +52,6 @@ impl Miner {
 
     /// Function to join an existing network
     /// * `destination` - the ip:port of the Miner we want to join
-    /// 
     pub fn join(&self, destination: String) {
         // Connexion au socket distant
         if let Ok(mut stream) = TcpStream::connect(&destination) {
