@@ -10,6 +10,7 @@ use std::collections::HashSet;
 mod block;
 
 enum Flag {
+    /// Ok -> Network
     Ok,
     Connect, // flag to signal that a Miner joined the newtwork
     Disconnect, // flag to signal that a Miner disconnected from the network
