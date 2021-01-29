@@ -128,7 +128,7 @@ impl Miner {
         
     }
 
-    pub fn handle_client(&self, mut stream: TcpStream) {
+    pub fn handle_client(&mut self, mut stream: TcpStream) {
         let mut data = [0 as u8; 50];
         while match stream.read(&mut data) {
             Ok(size) => {
@@ -138,6 +138,9 @@ impl Miner {
 
                 // select appropriate response based on the flag, convert the u8 number to flag
                 match flag {
+                    Flag::Connect => {
+                    
+                    }
                     Flag::Disconnect => { 
                         let peer_id = text[1..4].parse::<u32>().unwrap();
                         let peer_addr = text[4..].trim().to_string();
@@ -176,7 +179,7 @@ impl Miner {
     pub fn listen(&self) {
         println!("Server listening on port {}", &self.sockip);
         // accept connections and process them, spawning a new thread for each one
-        for stream in self.socket.incoming() {
+        for stream in (&self.socket).incoming() {
             match stream {
                 Ok(stream) => {
                     println!("New connection: {}", stream.peer_addr().unwrap()); 
@@ -193,7 +196,7 @@ impl Miner {
             } 
         }
         // close the socket server
-        drop(&self.socket);
+        drop(self.socket);
     }
 
 }
