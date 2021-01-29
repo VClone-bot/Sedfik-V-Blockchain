@@ -98,9 +98,9 @@ impl Miner {
     }
 
     /** Propagation */
-    pub fn propagate(&self, message: String) {
+    pub fn propagate(&self, message: &String) {
         // For each neighbor
-        for (id, neighbor_address) in self.network {
+        for (id, neighbor_address) in &self.network {
             
             // Open connection
             
@@ -109,10 +109,10 @@ impl Miner {
                 s.spawn(move |_| {
                 // connection succeeded
                
-                    if let Ok(mut stream) = TcpStream::connect(&neighbor_address) {
+                    if let Ok(stream) = TcpStream::connect(&neighbor_address) {
                 
                         println!("Réseau {} rejoint !", &neighbor_address);
-                        self.send_message(stream, &message);
+                        self.send_message(stream, message);
                         
                     } 
                 });
