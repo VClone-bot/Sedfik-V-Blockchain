@@ -92,7 +92,7 @@ impl Miner {
      *  
      */
     pub fn init_network(&self) {
-
+        
     }
 
     /**
