@@ -30,20 +30,20 @@ pub struct Miner {
     pub id: u32, // Our ID
     pub network: HashSet<(u32, String)>, // The IDs of every member of the network, always unique
     pub blocks: Vec<block::Block>, // The blocks calculated by us
-    pub socket: TcpListener, // Listener for Tcp transactions
     pub sockip: String,
 }
 
-pub fn create_miner(socket: String) -> Miner {
+pub fn create_miner(socket: &String) -> Miner {
     println!("Miner creation...");
-    let miner = Miner::new(socket);
+    let mut miner = Miner::new(socket.to_string());
     println!("{:?}", &miner);
+    miner.add_to_network(&miner.get_id(),&socket);
     return miner;
 }
 
 pub fn join_miner(socket: String, destination: String) -> Miner {
     println!("Joining miner...");
-    let miner = Miner::new(socket);
+    let miner = create_miner(&socket);
     miner.join(destination);
     println!("{:?}", &miner);
     return miner;
@@ -60,9 +60,12 @@ impl Miner {
             id: rng.gen::<u32>(),
             network: HashSet::new(),
             blocks: Vec::new(),
-            socket: TcpListener::bind(&socket).unwrap(),
             sockip: socket.to_string(),
         }
+    }
+
+    pub fn get_id(&self) -> u32 {
+        self.id
     }
 
     /// Function to join an existing network
@@ -70,18 +73,20 @@ impl Miner {
     pub fn join(&self, destination: String) {
         // Connexion au socket distant
         if let Ok(mut stream) = TcpStream::connect(&destination) {
-            println!("Réseau {} rejoint !", &destination);
-
+            println!("New miner {} joined", &destination);
+            
             // Écriture du message à envoyer
-            let msg = b"Ping!";
-            let resp = b"Pong:";
-            stream.write(msg).unwrap();
+            let connect_flag = Flag::Connect as u8;
+            //let message = connect_flag
+            
+            //stream.write(&connect_flag).unwrap();
 
             println!("Sent ping, awaiting reply...");
+            
             let mut data = [0 as u8; 5]; // using 6 byte buffer
             match stream.read_exact(&mut data) {
                 Ok(_) => {
-                    if &data == resp {
+                    if data[0] == Flag::Ok as u8 {
                         println!("Reply is ok!");
                     } else {
                         let text = from_utf8(&data).unwrap();
@@ -93,16 +98,16 @@ impl Miner {
                 }
             }
         } else {
-            println!("Connexion au réseau {} impossible", &destination);
+            println!("Failed to connect with {}", &destination);
         }
-        println!("Terminé.");
+        println!("Join done.");
     }
 
     /// Function to send a message
     /// * `stream` - Tcp Stream.
     /// * `message` - The message to send.
     pub fn send_message(&self, mut stream: TcpStream, message: &String) {
-        stream.write(&message.as_bytes()[0..]);    
+        stream.write(&message.as_bytes()[0..]);
         println!("Message: {} \nTo: {}",&message, stream.peer_addr().unwrap());
     }
 
@@ -111,13 +116,13 @@ impl Miner {
     pub fn propagate(&self, message: &String) {
         // For each neighbor
         println!("Propaging: {}", message);
-        for (_, neighbor_address) in &self.network { 
+        for (_, neighbor_address) in &self.network {
             // Open connection with another thread
-            thread::scope(|s| {    
+            thread::scope(|s| {
                 s.spawn(move |_| {
                     // Connect to neighbor
                     let stream = TcpStream::connect(&neighbor_address)
-                        .expect("Error : Couldn't connect to miner.");                   
+                        .expect("Error : Couldn't connect to miner.");             
                     self.send_message(stream, message);
                 });
             });
@@ -162,8 +167,8 @@ impl Miner {
     /// `peer_id` - an integer to identify the Miner, should be unique in the network
     /// `peer_addr` - the socket on which the Miner is listening, should be unique aswell
     /// Update the current Miner's network, returns true if the Miner was added to the newtork, false if the Miner was already in the network
-    pub fn add_to_network(&mut self, peer_id: u32, peer_addr: String) -> bool {
-        self.network.insert((peer_id, peer_addr))
+    pub fn add_to_network(&mut self, peer_id: &u32, peer_addr: &String) -> bool {
+        self.network.insert((*peer_id, peer_addr.to_string()))
     }
 
     /// Function to remove a Miner from the network
@@ -176,18 +181,15 @@ impl Miner {
 
     /// Function to listen for incoming Streams from the network
     /// Read the stream and spawn a thread to handle the received data
-    pub fn listen(&self) {
+    pub fn listen(mut self) {
         println!("Server listening on port {}", &self.sockip);
+        let listener = TcpListener::bind(&self.sockip).unwrap();
         // accept connections and process them, spawning a new thread for each one
-        for stream in (&self.socket).incoming() {
+        for stream in listener.incoming() {
             match stream {
                 Ok(stream) => {
-                    println!("New connection: {}", stream.peer_addr().unwrap()); 
-                    thread::scope(|s| {
-                        s.spawn(move |_| {
-                            self.handle_client(stream)
-                        });
-                    });
+                    println!("New connection: {}", stream.peer_addr().unwrap());  
+                    self.handle_client(stream);  
                 }
                 Err(e) => {
                     println!("Error: {}", e);
@@ -196,7 +198,7 @@ impl Miner {
             } 
         }
         // close the socket server
-        drop(self.socket);
+        drop(listener);
     }
 
 }
