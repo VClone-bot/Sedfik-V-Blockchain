@@ -10,11 +10,11 @@ use std::collections::HashSet;
 mod block;
 
 enum Flag {
-    ok = 0,
+    Ok = 0,
     /// New connection
-    connect = 1,
+    Connect = 1,
     /// Disconnection
-    disconnect = 2,
+    Disconnect = 2,
 }
 
 pub struct Miner {
@@ -46,8 +46,6 @@ pub fn join_miner(socket: String, destination: String) -> Miner {
 }
 
 impl Miner {
-   
-    ////////// NETWORKING
 
     /// CONSTRUCTOR
     /// `socket` - an ip:port string representing where is the Miner listening
@@ -75,7 +73,7 @@ impl Miner {
             println!("New miner {} joined", &destination);
             
             // Écriture du message à envoyer
-            let connect_flag = [Flag::connect as u8];
+            let connect_flag = [Flag::Connect as u8];
             
             // let msg = b"Ping!";
             // let resp = b"Pong!";
@@ -87,7 +85,7 @@ impl Miner {
             let mut data = [0 as u8; 5]; // using 6 byte buffer
             match stream.read_exact(&mut data) {
                 Ok(_) => {
-                    if data[0] == Flag::ok as u8 {
+                    if data[0] == Flag::Ok as u8 {
                         println!("Reply is ok!");
                     } else {
                         let text = from_utf8(&data).unwrap();
@@ -110,7 +108,6 @@ impl Miner {
     pub fn send_message(&self, mut stream: TcpStream, message: &String) {
         stream.write(&message.as_bytes()[0..]);
         println!("Message: {} \nTo: {}",&message, stream.peer_addr().unwrap());
-    
     }
 
     /// Message propagation to all neighbors
@@ -139,11 +136,20 @@ impl Miner {
         /// Use buffer to save data
         let mut data = [0 as u8; 50];
         while match stream.read(&mut data) {
-            Ok(_) => {
-                
-                println!("Message: {} \nFrom: {}", std::str::from_utf8(&data).unwrap(), stream.peer_addr().unwrap());
-                
-                stream.write(b"Pong!").unwrap();
+            Ok(size) => {
+                let message = std::str::from_utf8(&data[0..size]).unwrap();
+                let flag = data[0]; // get the flag
+                let text = &message[1..]; // get the remainder of the message
+
+                // select appropriate response based on the flag, convert the u8 number to flag
+                match flag {
+                    Flag::Disconnect => { 
+                        ()
+                        // self.remove_from_network(text.parse::<u32>().unwrap(),);
+
+                    }
+                    _ => { println!("Error: flag not recognized"); }
+                } 
                 true
             },
             Err(_) => {
@@ -154,7 +160,7 @@ impl Miner {
         } {}
     }
 
-    /// Function add a Miner to the network
+    /// Function to add a Miner to the network
     /// `peer_id` - an integer to identify the Miner, should be unique in the network
     /// `peer_addr` - the socket on which the Miner is listening, should be unique aswell
     /// Update the current Miner's network, returns true if the Miner was added to the newtork, false if the Miner was already in the network
@@ -162,6 +168,16 @@ impl Miner {
         self.network.insert((*peer_id, peer_addr.to_string()))
     }
 
+    /// Function to remove a Miner from the network
+    /// `peer_id` - an integer to identify the Miner
+    /// `peed_addr` - the socket of the Miner we want to remove from the network
+    /// Update the current Miner's network, returns true if the Miner was deleted from the newtork, false if the Miner wasn't in the network
+    pub fn remove_from_network(&mut self, peer_id: u32, peer_addr: String) -> bool {
+        self.network.remove(&(peer_id, peer_addr))
+    }
+
+    /// Function to listen for incoming Streams from the network
+    /// Read the stream and spawn a thread to handle the received data
     pub fn listen(&self) {
         println!("Server listening on port {}", &self.sockip);
         // accept connections and process them, spawning a new thread for each one
