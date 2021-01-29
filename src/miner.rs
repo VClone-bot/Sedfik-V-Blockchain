@@ -48,7 +48,9 @@ impl Miner {
     }
 
     pub fn join(&self, destination: String) {
+        
         // Connexion au socket distant
+        
         if let Ok(mut stream) = TcpStream::connect(&destination) {
             println!("Réseau {} rejoint !", &destination);
 
@@ -79,6 +81,38 @@ impl Miner {
 
         println!("Terminé.");
     }
+
+    /** Send message */
+    pub fn send_message(&self, mut stream: TcpStream, message: &String) {
+    
+        stream.write(&message.as_bytes()[0..]);
+        
+    }
+
+    /** Propagation */
+    pub fn propagate(&self, message: String) {
+        // For each neighbor
+        for (id, neighbor_address) in self.network {
+            
+            // Open connection
+            
+            thread::scope(|s| {
+                
+                s.spawn(move |_| {
+                // connection succeeded
+               
+                    if let Ok(mut stream) = TcpStream::connect(&neighbor_address) {
+                
+                        println!("Réseau {} rejoint !", &neighbor_address);
+                        self.send_message(stream, &message);
+                        
+                    } 
+                });
+            });
+        }
+    }
+
+
 
     pub fn init_network(&self) {
 
@@ -117,7 +151,7 @@ impl Miner {
                     println!("Error: {}", e);
                     /* connection failed */
                 }
-            }
+            } 
         }
         // close the socket server
         drop(&self.socket);
