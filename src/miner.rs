@@ -36,10 +36,9 @@ impl Miner {
    
     ////////// NETWORKING
 
-    /** CONSTRUCTOR
-     *  @param socket: an ip:port string representing where is the Miner listening
-     *  @out: a new Miner with a Listener on given socket, unique id, initialized network
-     */
+    /// CONSTRUCTOR
+    /// `socket` - an ip:port string representing where is the Miner listening
+    /// returns a new Miner with a TcpListener that listens to the given ip:port
     pub fn new (socket: String) -> Self {
         let mut rng = rand::thread_rng();
         return Miner {
@@ -51,14 +50,11 @@ impl Miner {
         }
     }
 
-    /** Function to join an existing network
-     * @param destination: the ip:port to which you want to connect
-     * @out sends a message with self.id and self.socket to let
-     */
+    /// Function to join an existing network
+    /// * `destination` - the ip:port of the Miner we want to join
+    /// 
     pub fn join(&self, destination: String) {
-        
         // Connexion au socket distant
-        
         if let Ok(mut stream) = TcpStream::connect(&destination) {
             println!("Réseau {} rejoint !", &destination);
 
@@ -82,11 +78,9 @@ impl Miner {
                     println!("Failed to receive data: {}", e);
                 }
             }
-
         } else {
             println!("Connexion au réseau {} impossible", &destination);
         }
-
         println!("Terminé.");
     }
 
@@ -147,13 +141,10 @@ impl Miner {
         } {}
     }
 
-    /** Function to add a Miner to the network
-     *  @param peer_id: an integer to identify the Miner, should be unique in the network
-     *  @param peer_addr: the socket on which the Miner is listening, should be unique aswell
-     *  @out: modify the current Miner's network to contain the (peer_id, peer_addr) tuple if it didn't before
-     *  @out: true if the tuple was added to the network
-     *  @out: false if the tuple already was in the network
-     */
+    /// Function add a Miner to the network
+    /// `peer_id` - an integer to identify the Miner, should be unique in the network
+    /// `peer_addr` - the socket on which the Miner is listening, should be unique aswell
+    /// Update the current Miner's network, returns true if the Miner was added to the newtork, false if the Miner was already in the network
     pub fn add_to_network(&mut self, peer_id: u32, peer_addr: String) -> bool {
         self.network.insert((peer_id, peer_addr))
     }
