@@ -13,7 +13,7 @@ fn main() {
     
     let role = &args[1]; // --create / --join
 
-    let mut address = "localhost:3000";
+    let mut address = String.strin"localhost:3000";
     
     if args.len() >= 3 {
      
@@ -21,7 +21,7 @@ fn main() {
     }
 
     match role.as_str() {
-        "--create" => miner::create_miner(), // Create root
+        "--create" => miner::create_miner(&address), // Create root
         // "--join" => "", // Join
         _ => println!("Not a valid argument."),
     }

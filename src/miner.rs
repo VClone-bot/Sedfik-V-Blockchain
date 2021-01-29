@@ -2,7 +2,8 @@ use std::net::{TcpStream};
 use std::collections::HashSet;
 use rand::Rng;
 use std::fmt::{ self, Debug, Formatter};
-use std::String
+use std::string::String;
+
 /** Miner
  Gestion des sockets
 */
@@ -12,11 +13,11 @@ pub struct Miner {
     pub network: HashSet<u32>,
 }
 
-pub fn create_miner(address: std::String) {
+pub fn create_miner(address: &String) {
     println!("Miner creation...");
     let miner = Miner::new();
     println!("{:?}", &miner);
-
+    miner.listen(address);
 
 }
 
@@ -40,7 +41,11 @@ impl Miner {
         // Ping all neigbhors to create first network map 
     }
 
-    fn listen(address: std::String) {
+    fn handle_connection(mut stream: TcpStream) {
+         
+    }
+
+    fn listen(&self, address: std::String) {
     let listener = TcpListener::bind(address).unwrap();
     // accept connections and process them, spawning a new thread for each one
     println!("Miner listening on {}", address);
@@ -49,7 +54,7 @@ impl Miner {
             Ok(stream) => {
                 
                 println!("New connection: {}", stream.peer_addr().unwrap());
-                handle_client(stream);
+                handle_connection(stream);
                 
                 //thread::spawn(move|| {
                     // connection succeeded
@@ -65,9 +70,7 @@ impl Miner {
     drop(listener);
     }
 
-    fn handle_connection(mut stream: TcpStream) {
-         
-    }
+
     
     pub fn get_network(&self) -> &HashSet<u32> {
         return &self.network;
