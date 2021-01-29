@@ -37,8 +37,11 @@ pub struct Miner {
 pub fn create_miner(socket: &String) -> Miner {
     println!("Miner creation...");
     let mut miner = Miner::new(socket.to_string());
+    miner.add_to_network(miner.get_id(),socket.to_string());
     println!("{:?}", &miner);
-    miner.add_to_network(&miner.get_id(),&socket);
+    for (i,e) in &miner.network {
+        println!("{}, {}",i,e);
+    } 
     return miner;
 }
 
@@ -77,10 +80,10 @@ impl Miner {
             println!("New miner {} joined", &destination);
             
             // Écriture du message à envoyer
-            let connect_flag = Flag::Connect as u8;
+            let connect_flag = [Flag::Connect as u8];
             //let message = connect_flag
             
-            //stream.write(&connect_flag).unwrap();
+            stream.write(&connect_flag).unwrap();
 
             println!("Sent ping, awaiting reply...");
             
@@ -145,7 +148,7 @@ impl Miner {
                 // select appropriate response based on the flag, convert the u8 number to flag
                 match flag {
                     Flag::Connect => {
-                    
+                        println!("OK!");
                     }
                     Flag::Disconnect => { 
                         let peer_id = text[1..4].parse::<u32>().unwrap();
@@ -168,8 +171,8 @@ impl Miner {
     /// `peer_id` - an integer to identify the Miner, should be unique in the network
     /// `peer_addr` - the socket on which the Miner is listening, should be unique aswell
     /// Update the current Miner's network, returns true if the Miner was added to the newtork, false if the Miner was already in the network
-    pub fn add_to_network(&mut self, peer_id: &u32, peer_addr: &String) -> bool {
-        self.network.insert((*peer_id, peer_addr.to_string()))
+    pub fn add_to_network(&mut self, peer_id: u32, peer_addr: String) -> bool {
+        self.network.insert((peer_id, peer_addr))
     }
 
     /// Function to remove a Miner from the network
@@ -208,7 +211,8 @@ impl Debug for Miner {
     fn fmt (&self, f: &mut Formatter) -> fmt::Result {
         write!(f, "Miner[{}]: \n Network:",
             &self.id,
-            // &self.network,
+            //&self.network,
         )
+        
     }
 }
