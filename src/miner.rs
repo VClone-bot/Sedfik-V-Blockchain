@@ -139,8 +139,9 @@ impl Miner {
                 // select appropriate response based on the flag, convert the u8 number to flag
                 match flag {
                     Flag::Disconnect => { 
-                        self.remove_from_network(text.parse::<u32>().unwrap());
-
+                        let peer_id = text[1..4].parse::<u32>().unwrap();
+                        let peer_addr = text[4..].trim().to_string();
+                        self.remove_from_network(peer_id, peer_addr);
                     }
                     _ => { println!("Error: flag not recognized"); }
                 } 
@@ -167,7 +168,7 @@ impl Miner {
     /// `peed_addr` - the socket of the Miner we want to remove from the network
     /// Update the current Miner's network, returns true if the Miner was deleted from the newtork, false if the Miner wasn't in the network
     pub fn remove_from_network(&mut self, peer_id: u32, peer_addr: String) -> bool {
-        self.network.remove((peer_id, peer_addr))
+        self.network.remove(&(peer_id, peer_addr))
     }
 
     /// Function to listen for incoming Streams from the network
