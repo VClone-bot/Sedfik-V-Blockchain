@@ -90,36 +90,42 @@ impl Miner {
         println!("Terminé.");
     }
 
-    /** Send message */
+    /// Send message
+    ///
+    /// Function to send a message
+    /// 
+    /// * `stream` - Tcp Stream.
+    /// * `message` - The message to send.
     pub fn send_message(&self, mut stream: TcpStream, message: &String) {
-    
-        stream.write(&message.as_bytes()[0..]);
         
+        stream.write(&message.as_bytes()[0..]);    
+        println!("Message: {} \nTo: {}",&message, stream.peer_addr().unwrap());
+    
     }
 
-    /** Propagation */
+    /// Message propagation to all neighbors
+    /// 
+    /// * `message` - Message sent.
     pub fn propagate(&self, message: &String) {
         // For each neighbor
+        println!("Propaging: {}", message);
+
         for (id, neighbor_address) in &self.network {
             
-            // Open connection
-            
+            // Open connection with another thread
             thread::scope(|s| {
                 
                 s.spawn(move |_| {
-                // connection succeeded
-               
-                    if let Ok(stream) = TcpStream::connect(&neighbor_address) {
-                
-                        println!("Réseau {} rejoint !", &neighbor_address);
-                        self.send_message(stream, message);
-                        
-                    } 
+
+                    // Connect to neighbor
+                    let stream = TcpStream::connect(&neighbor_address)
+                        .expect("Error : Couldn't connect to miner.");
+                                   
+                    self.send_message(stream, message);
                 });
             });
         }
     }
-
 
 
     /** Function to initialize the Miner's network when joining an existing network
@@ -136,6 +142,7 @@ impl Miner {
         let mut data = [0 as u8; 50];
         while match stream.read(&mut data) {
             Ok(size) => {
+                println!("Message: {} \nFrom: {}", std::str::from_utf8(&data).unwrap(), stream.peer_addr().unwrap());
                 stream.write(b"Pong!").unwrap();
                 true
             },
