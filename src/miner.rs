@@ -10,11 +10,20 @@ use std::collections::HashSet;
 mod block;
 
 enum Flag {
-    Ok = 0,
-    /// New connection
-    Connect = 1,
-    /// Disconnection
-    Disconnect = 2,
+    Ok,
+    Connect, // flag to signal that a Miner joined the newtwork
+    Disconnect, // flag to signal that a Miner disconnected from the network
+}
+
+impl Flag {
+    fn from_u8(value: u8) -> Flag {
+        match value {
+            0 => Flag::Ok,
+            1 => Flag::Connect,
+            2 => Flag::Disconnect,
+            _ => panic!("Unknown value: {}", value),
+        }
+    }
 }
 
 pub struct Miner {
@@ -132,21 +141,20 @@ impl Miner {
         
     }
 
-    pub fn handle_client(&self, mut stream: TcpStream) {
-        /// Use buffer to save data
+    pub fn handle_client(&mut self, mut stream: TcpStream) {
         let mut data = [0 as u8; 50];
         while match stream.read(&mut data) {
             Ok(size) => {
                 let message = std::str::from_utf8(&data[0..size]).unwrap();
-                let flag = data[0]; // get the flag
+                let flag = Flag::from_u8(message[0..1].parse::<u8>().unwrap()); // get the flag
                 let text = &message[1..]; // get the remainder of the message
 
                 // select appropriate response based on the flag, convert the u8 number to flag
                 match flag {
                     Flag::Disconnect => { 
-                        ()
-                        // self.remove_from_network(text.parse::<u32>().unwrap(),);
-
+                        let peer_id = text[1..4].parse::<u32>().unwrap();
+                        let peer_addr = text[4..].trim().to_string();
+                        self.remove_from_network(peer_id, peer_addr);
                     }
                     _ => { println!("Error: flag not recognized"); }
                 } 
