@@ -30,7 +30,6 @@ pub struct Miner {
     pub id: u32, // Our ID
     pub network: HashSet<(u32, String)>, // The IDs of every member of the network, always unique
     pub blocks: Vec<block::Block>, // The blocks calculated by us
-    pub socket: TcpListener, // Listener for Tcp transactions
     pub sockip: String,
 }
 
@@ -65,7 +64,6 @@ impl Miner {
             id: rng.gen::<u32>(),
             network: HashSet::new(),
             blocks: Vec::new(),
-            socket: TcpListener::bind(&socket).unwrap(),
             sockip: socket.to_string(),
         }
     }
@@ -82,8 +80,8 @@ impl Miner {
             println!("New miner {} joined", &destination);
             
             // Écriture du message à envoyer
-            let connect_flag = [Flag::Connect as u8];
-            
+            let connect_flag = Flag::Connect as u8;
+            // let message = connect_flag
             // let msg = b"Ping!";
             // let resp = b"Pong!";
             
@@ -186,18 +184,15 @@ impl Miner {
 
     /// Function to listen for incoming Streams from the network
     /// Read the stream and spawn a thread to handle the received data
-    pub fn listen(&self) {
+    pub fn listen(mut self) {
         println!("Server listening on port {}", &self.sockip);
+        let listener = TcpListener::bind(&self.sockip).unwrap();
         // accept connections and process them, spawning a new thread for each one
-        for stream in self.socket.incoming() {
+        for stream in listener.incoming() {
             match stream {
                 Ok(stream) => {
-                    println!("New connection: {}", stream.peer_addr().unwrap()); 
-                    thread::scope(|s| {
-                        s.spawn(move |_| {
-                            self.handle_client(stream)
-                        });
-                    });
+                    println!("New connection: {}", stream.peer_addr().unwrap());  
+                    self.handle_client(stream);  
                 }
                 Err(e) => {
                     println!("Error: {}", e);
@@ -206,7 +201,7 @@ impl Miner {
             } 
         }
         // close the socket server
-        drop(&self.socket);
+        drop(listener);
     }
 
 }
