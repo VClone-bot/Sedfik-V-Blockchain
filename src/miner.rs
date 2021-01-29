@@ -38,17 +38,13 @@ pub fn create_miner(socket: &String) -> Miner {
     println!("Miner creation...");
     let mut miner = Miner::new(socket.to_string());
     println!("{:?}", &miner);
-    
     miner.add_to_network(&miner.get_id(),&socket);
-
     return miner;
 }
 
 pub fn join_miner(socket: String, destination: String) -> Miner {
     println!("Joining miner...");
-    
     let miner = create_miner(&socket);
-
     miner.join(destination);
     println!("{:?}", &miner);
     return miner;
@@ -82,11 +78,9 @@ impl Miner {
             
             // Écriture du message à envoyer
             let connect_flag = Flag::Connect as u8;
-            // let message = connect_flag
-            // let msg = b"Ping!";
-            // let resp = b"Pong!";
+            //let message = connect_flag
             
-            stream.write(&connect_flag).unwrap();
+            //stream.write(&connect_flag).unwrap();
 
             println!("Sent ping, awaiting reply...");
             
@@ -150,6 +144,9 @@ impl Miner {
 
                 // select appropriate response based on the flag, convert the u8 number to flag
                 match flag {
+                    Flag::Connect => {
+                    
+                    }
                     Flag::Disconnect => { 
                         let peer_id = text[1..4].parse::<u32>().unwrap();
                         let peer_addr = text[4..].trim().to_string();
