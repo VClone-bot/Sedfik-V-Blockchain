@@ -88,7 +88,7 @@ impl Miner {
             println!("Sent ping, awaiting reply...");
             
             let mut data = [0 as u8; 5]; // using 6 byte buffer
-            match stream.read_exact(&mut data) {
+            match stream.read(&mut data) {
                 Ok(_) => {
                     if data[0] == Flag::Ok as u8 {
                         println!("Reply is ok!");
@@ -141,8 +141,8 @@ impl Miner {
         let mut data = [0 as u8; 50];
         while match stream.read(&mut data) {
             Ok(size) => {
+                let flag = Flag::from_u8(data[0]); // get the flag
                 let message = std::str::from_utf8(&data[0..size]).unwrap();
-                let flag = Flag::from_u8(message[0..1].parse::<u8>().unwrap()); // get the flag
                 let text = &message[1..]; // get the remainder of the message
 
                 // select appropriate response based on the flag, convert the u8 number to flag
