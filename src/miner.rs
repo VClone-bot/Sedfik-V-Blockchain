@@ -67,23 +67,18 @@ pub struct Miner {
     pub sockip: String,
 }
 
-pub fn create_miner(socket: &String) -> Miner {
+pub fn create_miner(socket: String, destination: String) {
     println!("Miner creation...");
     let mut miner = Miner::new(socket.to_string());
     miner.add_to_network(miner.get_id(),socket.to_string());
     println!("{:?}", &miner);
     for (i,e) in &miner.network {
         println!("{}, {}",i,e);
-    } 
-    return miner;
-}
-
-pub fn join_miner(socket: String, destination: String) -> Miner {
-    println!("Joining miner...");
-    let miner = create_miner(&socket);
-    miner.join(destination);
-    println!("{:?}", &miner);
-    return miner;
+    }
+    if !!! destination.is_empty() {
+        miner.join(destination);
+    }
+    miner.listen();
 }
 
 impl Miner {
