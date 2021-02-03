@@ -152,7 +152,7 @@ impl Miner {
 
     /// Message propagation to all neighbors
     /// * `message` - Message sent.
-    pub fn propagate(&self, message: &String) {
+    pub fn broadcast(&self, message: &String) {
         // For each neighbor
         println!("Propaging: {}", message);
         for (_, neighbor_address) in &self.network {
