@@ -177,8 +177,9 @@ impl Miner {
                     }
                     Flag::Ok => {
                         let received_network: String = std::str::from_utf8(&data[0..]).unwrap().trim().to_string();
-                        println!("Reply is ok!\nNetwork: {}", &received_network);
-                        let network: HashSet<(u32,String)> = hashset_from_string(received_network);
+                        println!("Reply is ok!\nNetwork:{} \n {}", &received_network, &received_network.chars().count());
+                        
+                        let network: HashSet<(u32,String)> = hashset_from_string(received_network.to_string());
                         for (i,e) in &network {
                             println!("{}, {}",i,e);
                         }
