@@ -136,7 +136,15 @@ impl Miner {
         println!("Join done.");
     }
 
+    // Ajoute du padding sockip
+    pub fn encode_sockip(sockip: String) -> String {
+        return format!("{:X<21}", sockip);
+    }
 
+    // Retire le padding au sockip
+    pub fn decode_sockip(sockip: String) -> String {
+        return str::replace(&sockip, "X", "");
+    }
 
     /// Function to send a message
     /// * `stream` - Tcp Stream.
@@ -201,8 +209,8 @@ impl Miner {
                 true
             },
             Ok(size) => { println!("No message received"); false },
-            Err(_) => {
-                println!("Error occurs, closing connection");
+            Err(e) => {
+                println!("Error occurs, closing connection: {}", e);
                 stream.shutdown(Shutdown::Both).unwrap();
                 false
             }
