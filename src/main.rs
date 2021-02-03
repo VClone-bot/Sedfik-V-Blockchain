@@ -39,12 +39,11 @@ fn main() {
     }
 
     if role == "creator" {
-        miner = miner::create_miner(&socket.to_string());
+        miner::create_miner(socket.to_string(), String::new());
     } else {
-        miner = miner::join_miner(socket.to_string(), address.to_string());
+        miner::create_miner(socket.to_string(), address.to_string());
     }
-    
-    miner.listen();
+
 
     return ();
 }
