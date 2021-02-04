@@ -3,6 +3,7 @@ use std::fmt::{self, Debug, Formatter};
 use std::io::{Read, Write};
 use rand::Rng;
 use std::str::from_utf8;
+use std::str::FromStr;
 use crossbeam_utils::thread;
 use std::collections::HashSet;
 
@@ -43,11 +44,14 @@ pub fn hashset_to_string(set: &HashSet<(u32, String)>) -> String {
 /// 
 /// 
 pub fn hashset_from_string(hashset :String) -> HashSet<(u32, String)> {
-    let mut res = HashSet::new();
+    let mut res = HashSet::<(u32,String)>::new();
     let splited: Vec<&str> = hashset.split(";").collect();
     for element in splited {
         let couple: Vec<&str> = element.split(",").collect();
-        res.insert((couple[0].parse::<u32>().unwrap(),couple[1].to_string()));
+        let id: u32 =  String::from(couple[0].trim_matches(char::from(0))).parse::<u32>().unwrap();
+        let address: String = couple[1].to_string();
+        println!("id:{}, addr: {}",&id,&address);
+        res.insert((id,address));
     }
     res
 }
@@ -104,35 +108,7 @@ impl Miner {
     /// * `destination` - the ip:port of the Miner we want to join
     pub fn join(&self, destination: String) {
         // Connexion au socket distant
-        if let Ok(mut stream) = TcpStream::connect(&destination) {
-            println!("New miner {} joined", &destination);
-            
-            // Écriture du message à envoyer
-            let connect_flag = [Flag::Connect as u8];
-            //let message = connect_flag
-            
-            stream.write(&connect_flag).unwrap();
-
-            println!("Sent ping, awaiting reply...");
-            
-            let mut data = [0 as u8; 5]; // using 6 byte buffer
-            match stream.read(&mut data) {
-                Ok(_) => {
-                    if data[0] == Flag::Ok as u8 {
-                        println!("Reply is ok!\n Network: {}",&from_utf8(&data[0..]).unwrap());
-                        
-                    } else {
-                        let text = from_utf8(&data).unwrap();
-                        println!("Unexpected reply: {}", text);
-                    }
-                },
-                Err(e) => {
-                    println!("Failed to receive data: {}", e);
-                }
-            }
-        } else {
-            println!("Failed to connect with {}", &destination);
-        }
+        self.send_message(&destination, &"".to_string(),Flag::Connect);
         println!("Join done.");
     }
 
@@ -149,11 +125,15 @@ impl Miner {
     /// Function to send a message
     /// * `stream` - Tcp Stream.
     /// * `message` - The message to send.
-    pub fn send_message(&self, mut stream: &TcpStream, message: &String, flag: Flag) {
-        println!("Sending message: {} \nTo: {}",&message, stream.peer_addr().unwrap());
-        let m: &[u8] = &concat_u8(&[flag as u8], &message.as_bytes()[0..]); // TODO : Does the flag still is first byte ?
-        stream.write(m);
-        println!("Message sended");
+    pub fn send_message(&self, destination: &String, message: &String, flag: Flag) {
+        println!("Sending message: {} \nTo: {}",&message, &destination);
+        if let Ok(mut stream) = TcpStream::connect(&destination) {
+            let m: &[u8] = &concat_u8(&[flag as u8], &message.as_bytes()[0..]); // TODO : Does the flag still is first byte ?
+            stream.write(m);
+            println!("Message sended");
+        } else {
+            println!("Connection with {} failed.", &destination);
+        }
     }
 
 
@@ -162,15 +142,13 @@ impl Miner {
     /// * `message` - Message sent.
     pub fn broadcast(&self, message: &String) {
         // For each neighbor
-        println!("Propaging: {}", message);
+        println!("Propaging: {}", &message);
         for (_, neighbor_address) in &self.network {
             // Open connection with another thread
             thread::scope(|s| {
                 s.spawn(move |_| {
-                    // Connect to neighbor
-                    let stream = TcpStream::connect(&neighbor_address)
-                        .expect("Error : Couldn't connect to miner.");             
-                    self.send_message(&stream, message, Flag::Ok); // TODO : Change Flag
+                    // Connect to neighbor             
+                    self.send_message(&neighbor_address, &message, Flag::Ok); // TODO : Change Flag
                 });
             });
         }
@@ -196,12 +174,29 @@ impl Miner {
                 match flag {
                     Flag::Connect => {
                         println!("OK!");
-                        self.send_message(&stream, &hashset_to_string(&self.network), Flag::Ok);
+                        let destination = format!("{}:{}",&stream.local_addr().unwrap().ip().to_string(),&stream.local_addr().unwrap().port().to_string());
+                        
+                        self.send_message(&destination , &hashset_to_string(&self.network), Flag::Ok);
                     }
                     Flag::Disconnect => {
                         let peer_id = text[1..4].parse::<u32>().unwrap();
                         let peer_addr = text[4..].trim().to_string();
                         self.remove_from_network(peer_id, peer_addr);
+                    }
+                    Flag::Ok => {
+                        let received_network: String = std::str::from_utf8(&data[0..]).unwrap().to_string().replace(" ", "");
+                        println!("Reply is ok!\nNetwork:{} \n {}", &received_network, &received_network.chars().count());
+                        println!("{} ",&received_network.chars().nth(40).unwrap_or('0'));
+                        let network: HashSet<(u32,String)> = hashset_from_string(received_network.to_string());
+                        for (i,e) in &network {
+                            println!("{}, {}",i,e);
+                        }
+                        // self.network | network;
+                        self.network = self.network.union(&network).into_iter().cloned().collect::<HashSet<_>>();
+                        println!("New network: ");
+                        for (i,e) in &self.network {
+                            println!("{}, {}",i,e);
+                        }
                     }
                     _ => { println!("Error: flag not recognized"); }
                 } 
@@ -243,8 +238,8 @@ impl Miner {
         for stream in listener.incoming() {
             match stream {
                 Ok(stream) => {
-                    println!("New connection: {}", stream.peer_addr().unwrap());  
-                    self.handle_client(stream);  
+                    println!("New connection: {}", &stream.peer_addr().unwrap());  
+                    self.handle_client(stream);
                 }
                 Err(e) => {
                     println!("Error: {}", e);
