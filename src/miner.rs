@@ -48,10 +48,10 @@ pub fn hashset_from_string(hashset :String) -> HashSet<(u32, String)> {
     let splited: Vec<&str> = hashset.split(";").collect();
     for element in splited {
         let couple: Vec<&str> = element.split(",").collect();
-        let id: u32 = couple[0].trim().parse::<u32>().unwrap();
+        let id: u32 =  String::from(couple[0].trim_matches(char::from(0))).parse::<u32>().unwrap();
         let address: String = couple[1].to_string();
-        println!("{},{}",&id,&address);
-        //res.insert((id,address));
+        println!("id:{}, addr: {}",&id,&address);
+        res.insert((id,address));
     }
     res
 }
@@ -176,9 +176,9 @@ impl Miner {
                         self.remove_from_network(peer_id, peer_addr);
                     }
                     Flag::Ok => {
-                        let received_network: String = std::str::from_utf8(&data[0..]).unwrap().trim().to_string();
+                        let received_network: String = std::str::from_utf8(&data[0..]).unwrap().to_string().replace(" ", "");
                         println!("Reply is ok!\nNetwork:{} \n {}", &received_network, &received_network.chars().count());
-                        
+                        println!("{} ",&received_network.chars().nth(40).unwrap_or('0'));
                         let network: HashSet<(u32,String)> = hashset_from_string(received_network.to_string());
                         for (i,e) in &network {
                             println!("{}, {}",i,e);
