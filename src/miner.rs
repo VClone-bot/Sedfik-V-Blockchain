@@ -10,7 +10,7 @@ use std::collections::HashSet;
 #[path="./block.rs"]
 mod block;
 
-enum Flag {
+pub enum Flag {
     /// Ok -> Network
     Ok,
     Connect, // flag to signal that a Miner joined the newtwork
@@ -63,7 +63,31 @@ pub fn hashset_from_string(hashset :String) -> HashSet<(u32, String)> {
 pub fn concat_u8(first: &[u8], second: &[u8]) -> Vec<u8> {
     [first, second].concat()
 }
+// Ajoute du padding sockip
+pub fn encode_sockip(sockip: String) -> String {
+    return format!("{:X<21}", sockip);
+}
 
+// Retire le padding au sockip
+pub fn decode_sockip(sockip: String) -> String {
+    return str::replace(&sockip, "X", "");
+}
+
+
+pub fn decode_mesage(msg : &[u8]) -> (Flag, String, String){
+    let flag = Flag::from_u8(msg[0]); // get the flag
+    let sockip = std::str::from_utf8(&msg[1..21]).unwrap();
+    let msg = std::str::from_utf8(&msg[22..]).unwrap();
+
+    (flag, decode_sockip(sockip.to_string()), msg.to_string())
+}
+
+pub fn encode_message(flag : Flag, sockip : String, msg : String) -> Vec<u8>{
+    let flagConvert = flag as u8;
+    let sockipConvert : String = encode_sockip(sockip);
+    let msgConvert : &[u8] = msg.as_bytes();
+    concat_u8(&[flagConvert], &concat_u8(sockipConvert.as_bytes(), msgConvert))
+}
 pub struct Miner {
     pub id: u32, // Our ID
     pub network: HashSet<(u32, String)>, // The IDs of every member of the network, always unique
@@ -112,23 +136,15 @@ impl Miner {
         println!("Join done.");
     }
 
-    // Ajoute du padding sockip
-    pub fn encode_sockip(sockip: String) -> String {
-        return format!("{:X<21}", sockip);
-    }
-
-    // Retire le padding au sockip
-    pub fn decode_sockip(sockip: String) -> String {
-        return str::replace(&sockip, "X", "");
-    }
-
+    
     /// Function to send a message
     /// * `stream` - Tcp Stream.
     /// * `message` - The message to send.
     pub fn send_message(&self, destination: &String, message: &String, flag: Flag) {
         println!("Sending message: {} \nTo: {}",&message, &destination);
         if let Ok(mut stream) = TcpStream::connect(&destination) {
-            let m: &[u8] = &concat_u8(&[flag as u8], &message.as_bytes()[0..]); // TODO : Does the flag still is first byte ?
+            let m: &[u8] = &encode_message(flag, self.sockip.to_string(), message.to_string());
+            //&concat_u8(&[flag as u8], &message.as_bytes()[0..]); // TODO : Does the flag still is first byte ?
             stream.write(m);
             println!("Message sended");
         } else {
@@ -163,19 +179,25 @@ impl Miner {
         while match stream.read(&mut data) { 
             Ok(size) if size > 0 => { // If a message is received
                 println!("Message received of size: {}", &size);
-                let flag = Flag::from_u8(data[0]); // get the flag
+                let tuple : (Flag, String, String) = decode_mesage(&data);
+                //let flag = Flag::from_u8(data[0]); // get the flag
+                let flag = tuple.0;
                 println!("\tFlag: {}", &data[0]);
-                let message = std::str::from_utf8(&data[0..size]).unwrap();
+                //println!("\tFlag: {:?}", &flag);
+                //let message = std::str::from_utf8(&data[0..size]).unwrap();
+                let message = tuple.2;
                 println!("\tMessage: {}", &message);
 
                 let text = &message[1..]; // get the remainder of the message
+                let sockip = tuple.1;
+                println!("\tSockIp: {}", &sockip);
 
                 // select appropriate response based on the flag, convert the u8 number to flag
                 match flag {
                     Flag::Connect => {
                         println!("OK!");
-                        let destination = format!("{}:{}",&stream.local_addr().unwrap().ip().to_string(),&stream.local_addr().unwrap().port().to_string());
-                        
+                        //let destination = format!("{}:{}",&stream.local_addr().unwrap().ip().to_string(),&stream.local_addr().unwrap().port().to_string());
+                        let destination = sockip;
                         self.send_message(&destination , &hashset_to_string(&self.network), Flag::Ok);
                     }
                     Flag::Disconnect => {
