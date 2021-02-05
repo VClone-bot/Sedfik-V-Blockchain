@@ -1,7 +1,6 @@
 use std::net::{TcpStream, TcpListener, Shutdown};
 use std::fmt::{self, Debug, Formatter};
 use std::io::{Read, Write};
-use rand::Rng;
 use std::str::from_utf8;
 use std::str::FromStr;
 use crossbeam_utils::thread;
@@ -15,6 +14,8 @@ pub enum Flag {
     Ok,
     Connect, // flag to signal that a Miner joined the newtwork
     Disconnect, // flag to signal that a Miner disconnected from the network
+    RequireID,
+    GiveID,
 }
 
 impl Flag {
@@ -23,6 +24,8 @@ impl Flag {
             0 => Flag::Ok,
             1 => Flag::Connect,
             2 => Flag::Disconnect,
+            3 => Flag::RequireID,
+            4 => Flag::GiveID,
             _ => panic!("Unknown value: {}", value),
         }
     }
@@ -74,20 +77,94 @@ pub fn decode_sockip(sockip: String) -> String {
 }
 
 
-pub fn decode_mesage(msg : &[u8]) -> (Flag, String, String){
+pub fn decode_message(msg : &[u8]) -> (Flag, String, String){
     let flag = Flag::from_u8(msg[0]); // get the flag
-    let sockip = std::str::from_utf8(&msg[1..21]).unwrap();
+    let sockip_encoded = std::str::from_utf8(&msg[1..21]).unwrap();
     let msg = std::str::from_utf8(&msg[22..]).unwrap();
+
+    let sockip = decode_sockip(sockip_encoded.to_string());
 
     (flag, decode_sockip(sockip.to_string()), msg.to_string())
 }
 
 pub fn encode_message(flag : Flag, sockip : String, msg : String) -> Vec<u8>{
-    let flagConvert = flag as u8;
-    let sockipConvert : String = encode_sockip(sockip);
-    let msgConvert : &[u8] = msg.as_bytes();
-    concat_u8(&[flagConvert], &concat_u8(sockipConvert.as_bytes(), msgConvert))
+    let flag_convert = flag as u8;
+    let sockip_convert : String = encode_sockip(sockip);
+    let msg_convert : &[u8] = msg.as_bytes();
+    concat_u8(&[flag_convert], &concat_u8(sockip_convert.as_bytes(), msg_convert))
 }
+
+pub fn create_miner(miner_type: char, socket: String, destination: String) {
+    println!("Miner creation...");
+    let mut miner;
+    match miner_type {
+        'c' => { miner = Miner::new(0, socket.to_string()); }
+        'j' => { miner = Miner::new(ask_for_id(&socket, &destination), socket.to_string()); }
+        _ => { println!("Unrecognized miner type"); return (); }
+    }
+    miner.add_to_network(miner.get_id(),socket.to_string());
+    println!("{:?}", &miner);
+    for (i,e) in &miner.network {
+        println!("{}, {}",i,e);
+    }
+    if !!! destination.is_empty() {
+        println!("Now connecting to nework...");
+        miner.join(destination);
+        println!("Connected!\n");
+    }
+    println!("Starting to listen...");
+    miner.listen();
+}
+
+pub fn ask_for_id(socket: &String, destination: &String) -> u32 {
+    println!("Asking {} for id...", &destination);
+    let listener = TcpListener::bind(&socket).unwrap();
+    let mut id: u32 = 0;
+
+    if let Ok(mut stream) = TcpStream::connect(&destination) {
+        let m: &[u8] = &encode_message(Flag::RequireID, socket.to_string(), "".to_string());
+        match stream.write(m) {
+            Ok(_) => { println!("Asked for id"); }
+            Err(e) => { println!("Error: {}", e); }
+        }
+        println!("Message sended");
+    }
+
+    for stream in listener.incoming() {
+        match stream {
+            Ok(stream) => {
+                println!("Getting ID from Genesis");
+                id = handle_id(stream);
+                println!("My ID is {}.", &id);
+                return id;
+            }
+            Err(e) => {
+                println!("Error: {}", e);
+                return 0;
+            }
+        }
+    }
+    return id;
+} 
+
+pub fn handle_id(mut stream: TcpStream) -> u32 {
+    let mut data = [0 as u8; 50];
+    match stream.read(&mut data) {
+        Ok(size) if size > 0 => {
+            let id_as_str = std::str::from_utf8(&data[22..size]).unwrap();
+            let id = id_as_str.parse::<u32>().unwrap();
+            return id;
+        },
+        Ok(_) => { println!("No message received");},
+        Err(e) => {
+            println!("Error occured, closing connection: {}", e);
+            stream.shutdown(Shutdown::Both).unwrap();
+        }
+    }
+    {}
+    0
+}
+
 pub struct Miner {
     pub id: u32, // Our ID
     pub network: HashSet<(u32, String)>, // The IDs of every member of the network, always unique
@@ -95,33 +172,18 @@ pub struct Miner {
     pub sockip: String,
 }
 
-pub fn create_miner(socket: String, destination: String) {
-    println!("Miner creation...");
-    let mut miner = Miner::new(socket.to_string());
-    miner.add_to_network(miner.get_id(),socket.to_string());
-    println!("{:?}", &miner);
-    for (i,e) in &miner.network {
-        println!("{}, {}",i,e);
-    }
-    if !!! destination.is_empty() {
-        miner.join(destination);
-    }
-    miner.listen();
-}
-
 impl Miner {
 
     /// CONSTRUCTOR
     /// `socket` - an ip:port string representing where is the Miner listening
     /// returns a new Miner with a TcpListener that listens to the given ip:port
-    pub fn new (socket: String) -> Self {
-        let mut rng = rand::thread_rng();
+    pub fn new (id: u32, socket: String) -> Self {
         return Miner {
-            id: rng.gen::<u32>(),
+            id: id,
             network: HashSet::new(),
             blocks: Vec::new(),
             sockip: socket.to_string(),
-        }
+        }        
     }
 
     pub fn get_id(&self) -> u32 {
@@ -170,8 +232,15 @@ impl Miner {
         }
     }
 
-    pub fn init_network(&self) {
-        
+    pub fn retrieve_next_id(&self) -> u32 {
+        let mut max_id = &self.id;
+        for (id, _) in &self.network {
+            if id > max_id {
+                max_id = id;
+            }
+        }
+        println!("found id is {}", max_id);
+        return max_id+1.to_owned();
     }
 
     pub fn handle_client(&mut self, mut stream: TcpStream) {
@@ -179,7 +248,7 @@ impl Miner {
         while match stream.read(&mut data) { 
             Ok(size) if size > 0 => { // If a message is received
                 println!("Message received of size: {}", &size);
-                let tuple : (Flag, String, String) = decode_mesage(&data);
+                let tuple : (Flag, String, String) = decode_message(&data);
                 //let flag = Flag::from_u8(data[0]); // get the flag
                 let flag = tuple.0;
                 println!("\tFlag: {}", &data[0]);
@@ -189,16 +258,17 @@ impl Miner {
                 println!("\tMessage: {}", &message);
 
                 let text = &message[1..]; // get the remainder of the message
-                let sockip = tuple.1;
-                println!("\tSockIp: {}", &sockip);
+                let sender_sockip = tuple.1;
+                println!("\tSockIp: {}", &sender_sockip);
 
                 // select appropriate response based on the flag, convert the u8 number to flag
                 match flag {
                     Flag::Connect => {
                         println!("OK!");
                         //let destination = format!("{}:{}",&stream.local_addr().unwrap().ip().to_string(),&stream.local_addr().unwrap().port().to_string());
-                        let destination = sockip;
+                        let destination = &sender_sockip;
                         self.send_message(&destination , &hashset_to_string(&self.network), Flag::Ok);
+                        self.add_to_network(0, sender_sockip);
                     }
                     Flag::Disconnect => {
                         let peer_id = text[1..4].parse::<u32>().unwrap();
@@ -216,20 +286,24 @@ impl Miner {
                         for (i,e) in &self.network {
                             println!("{}, {}",i,e);
                         }
-                        self.broadcast(&message, flag);
+                        // self.broadcast(&message, flag);
+                    }
+                    Flag::RequireID => {
+                        let next_id = self.retrieve_next_id().to_string();
+                        self.send_message(&sender_sockip, &next_id, Flag::GiveID);
                     }
                     _ => { println!("Error: flag not recognized"); }
                 } 
                 data = [0 as u8; 50];
                 true
             },
-            Ok(size) => { println!("No message received"); false },
+            Ok(_) => { println!("No message received"); false },
             Err(e) => {
                 println!("Error occurs, closing connection: {}", e);
                 stream.shutdown(Shutdown::Both).unwrap();
                 false
             }
-        } 
+        }
         {}       
     }
 
@@ -265,7 +339,11 @@ impl Miner {
                     println!("Error: {}", e);
                     /* connection failed */
                 }
-            } 
+            }
+            println!("\nCurrent network:");
+            for miner in &self.network {
+                println!("\tid: {}, sockip: {}", miner.0, miner.1);
+            }
         }
         // close the socket server
         drop(listener);
