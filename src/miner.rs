@@ -220,16 +220,16 @@ impl Miner {
     /// * `message` - Message sent.
     pub fn broadcast(&self, message: &String, flag: Flag) {
         // For each neighbor
-        println!("Propaging: {}", &message);
-        for (_, neighbor_address) in &self.network {
-            // Open connection with another thread
-            thread::scope(|s| {
-                s.spawn(move |_| {
-                    // Connect to neighbor             
-                    self.send_message(&neighbor_address, &message, flag); // TODO : Change Flag
-                });
-            });
-        }
+        // println!("Propaging: {}", &message);
+        // for (_, neighbor_address) in &self.network {
+        //     // Open connection with another thread
+        //     thread::scope(|s| {
+        //         s.spawn(move |_| {
+        //             // Connect to neighbor             
+        //             self.send_message(&neighbor_address, &message, flag); // TODO : Change Flag
+        //         });
+        //     });
+        // }
     }
 
     pub fn retrieve_next_id(&self) -> u32 {
