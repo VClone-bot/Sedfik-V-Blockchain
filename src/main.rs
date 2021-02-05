@@ -39,9 +39,9 @@ fn main() {
     }
 
     if role == "creator" {
-        miner::create_miner(socket.to_string(), String::new());
+        miner::create_miner('c',socket.to_string(), String::new());
     } else {
-        miner::create_miner(socket.to_string(), address.to_string());
+        miner::create_miner('j',socket.to_string(), address.to_string());
     }
 
 
