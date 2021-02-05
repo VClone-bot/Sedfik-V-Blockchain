@@ -1,8 +1,6 @@
 use std::net::{TcpStream, TcpListener, Shutdown};
 use std::fmt::{self, Debug, Formatter};
 use std::io::{Read, Write};
-use std::str::from_utf8;
-use std::str::FromStr;
 use crossbeam_utils::thread;
 use std::collections::HashSet;
 
@@ -69,10 +67,17 @@ pub fn hashset_from_string(hashset :String) -> HashSet<(u32, String)> {
 /// Conctene u8 array
 /// * `first`
 /// * `second`
+/// Example 
+/// ```rust 
+/// let first: &[u8] = String::from("Hello, ").as_bytes();
+/// let second: &[u8] = String::from("World!").as_bytes();
+/// asserteq!("Hello, World!",concat_u8(&first,&second));
+/// ```
 pub fn concat_u8(first: &[u8], second: &[u8]) -> Vec<u8> {
-    let tmp = [first, second].concat();
-    tmp
+    [first, second].concat()
 }
+
+
 // Ajoute du padding sockip
 pub fn encode_sockip(sockip: String) -> String {
     return format!("{:X<21}", sockip);
@@ -102,12 +107,12 @@ pub fn decode_message(msg : &[u8]) -> (Flag, String, String, String){
     (flag, decode_sockip(sockip.to_string()), decode_id(id_encoded.to_string()), msg.to_string())
 }
 
-pub fn encode_message(flag : &Flag, sockip : String, id : String, msg : String) -> Vec<u8>{
-    let flag_convert = *flag as u8;
+pub fn encode_message(flag : Flag, sockip : String, id : String, msg : String) -> Vec<u8>{
+    let flag_convert: &[u8] = &[flag as u8];
     let sockip_convert : String = encode_sockip(sockip);
     let id_convert : String = encode_id(id);
     let msg_convert : &[u8] = msg.as_bytes();
-    concat_u8(&[flag_convert], &concat_u8(sockip_convert.as_bytes(), &concat_u8(id_convert.as_bytes(), msg_convert)))
+    concat_u8(flag_convert, &concat_u8(sockip_convert.as_bytes(), &concat_u8(id_convert.as_bytes(), msg_convert)))
 }
 
 pub fn create_miner(miner_type: char, socket: String, destination: String) {
@@ -138,7 +143,7 @@ pub fn ask_for_id(socket: &String, destination: &String) -> u32 {
     let mut id: u32 = 0;
 
     if let Ok(mut stream) = TcpStream::connect(&destination) {
-        let m: &[u8] = &encode_message(&Flag::RequireID, socket.to_string(), "".to_string(), "".to_string());
+        let m: &[u8] = &encode_message(Flag::RequireID, socket.to_string(), "".to_string(), "".to_string());
         match stream.write(m) {
             Ok(_) => { println!("Asked for id"); }
             Err(e) => { println!("Error: {}", e); }
@@ -210,22 +215,29 @@ impl Miner {
     /// * `destination` - the ip:port of the Miner we want to join
     pub fn join(&self, destination: String) {
         // Connexion au socket distant
-        self.send_message(&destination, &self.id.to_string(), &Flag::Connect);
-        println!("Join done.");
+        match self.send_message(&destination, &self.id.to_string(), Flag::Connect) {
+            Ok(_) => println!("Join done."),
+            Err(e) => println!("Err: {}", e),
+        }
+        
     }
 
     
     /// Function to send a message
     /// * `stream` - Tcp Stream.
     /// * `message` - The message to send.
-    pub fn send_message(&self, destination: &String, message: &String, flag: &Flag) {
+    pub fn send_message(&self, destination: &String, message: &String, flag: Flag) -> Result<u8,&'static str> {
         println!("Sending message: {} \nTo: {}",&message, &destination);
         if let Ok(mut stream) = TcpStream::connect(&destination) {
-            let m: &[u8] = &encode_message(flag, self.sockip.to_string(), self.id.to_string(), message.to_string());
-            stream.write(m);
+            let m: &[u8] = &encode_message(flag, self.sockip.to_string(),self.id.to_string(), message.to_string());
+            match stream.write(m) {
+                Ok(_) => print!(""),
+                Err(e) => print!("{}",e.to_string()),
+            }
             println!("Message sended");
+            Ok(0)
         } else {
-            println!("Connection with {} failed.", &destination);
+            Err("Connection failed.")
         }
     }
 
@@ -233,7 +245,7 @@ impl Miner {
         println!("Broadcasting network changes");
         for(_, peer_addr) in &self.network {
             if peer_addr.to_string() != sender {
-                self.send_message(&peer_addr, message, &flag);
+                self.send_message(&peer_addr, message, flag);
             }
         }
     }
@@ -249,7 +261,7 @@ impl Miner {
             thread::scope(|s| {
                 s.spawn(move |_| {
                     // Connect to neighbor             
-                    self.send_message(&neighbor_address, &message, &Flag::Ok); // TODO : Change Flag
+                    self.send_message(&neighbor_address, &message, Flag::Ok); // TODO : Change Flag
                 });
             });
         }
@@ -293,7 +305,10 @@ impl Miner {
                         println!("OK!");
                         //let destination = format!("{}:{}",&stream.local_addr().unwrap().ip().to_string(),&stream.local_addr().unwrap().port().to_string());
                         let destination = &sender_sockip;
-                        self.send_message(&destination , &hashset_to_string(&self.network), &Flag::Ok);
+                        match self.send_message(&destination , &hashset_to_string(&self.network), Flag::Ok) {
+                            Ok(_) => println!(""),
+                            Err(e) => println!("Err: {}", e),
+                        }
                         println!("{}", sender_id_as_str);
                         let sender_id = sender_id_as_str.parse::<u32>().unwrap();
                         let broadcast_message = format!("{};{}", sender_sockip, sender_id);
@@ -307,24 +322,21 @@ impl Miner {
                         self.broadcast_to_network(&message, Flag::BroadcastDisconnect, self.sockip.to_string());
                     }
                     Flag::Ok => {
-                        let received_network = message;
-                        println!("Reply is ok!\nNetwork:{} \n {}", &received_network, &received_network.chars().count());
-                        println!("{} ",&received_network.chars().nth(40).unwrap_or('0'));                     
+                        let received_network: &String = &message;
+                        println!("Reply is ok!\nNetwork:{} \n {}", received_network, received_network.chars().count());
+                        println!("{} ",&received_network.chars().nth(40).unwrap_or('0'));
+                        let network: HashSet<(u32,String)> = hashset_from_string(received_network.to_string());
 
-                        let network: HashSet<(u32,String)> = hashset_from_string(received_network);
-                        for (i,e) in &network {
-                            println!("{}, {}",i,e);
-                        }
-                        // self.network | network;
                         self.network = self.network.union(&network).into_iter().cloned().collect::<HashSet<_>>();
                         println!("New network: ");
                         for (i,e) in &self.network {
                             println!("{}, {}",i,e);
                         }
+                        // self.broadcast(&message, flag);
                     }
                     Flag::RequireID => {
                         let next_id = self.retrieve_next_id().to_string();
-                        self.send_message(&sender_sockip, &next_id, &Flag::GiveID);
+                        self.send_message(&sender_sockip, &next_id, Flag::GiveID);
                     }
                     Flag::BroadcastConnect => {
 

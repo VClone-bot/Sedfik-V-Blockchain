@@ -3,8 +3,8 @@ mod miner;
 
 fn main() {
 
-    //let block = Block::new(0, "Premier bloc".to_owned(), 0, 0, vec![0; 32]);
-    //println!("{:?}", &block);
+    // let block = Block::new(0, "Premier bloc".to_owned(), 0, 0, vec![0; 32]);
+    // println!("{:?}", &block);
 
     let args: Vec<String> = env::args().collect();
     
@@ -23,7 +23,6 @@ fn main() {
     let role; // {--create, -c} pour créer un réseau, {--join, -j} pour en rejoindre un existant
     let socket = &args[2]; // L'ip:port du socket sur lequel le miner va écouter
     let mut address = &args[2];
-    let mut miner: miner::Miner;
     
     if &args[1] == "-c" || &args[1] == "--create" {
         role = "creator";
@@ -39,9 +38,9 @@ fn main() {
     }
 
     if role == "creator" {
-        miner::create_miner(socket.to_string(), String::new());
+        miner::create_miner('c',socket.to_string(), String::new());
     } else {
-        miner::create_miner(socket.to_string(), address.to_string());
+        miner::create_miner('j',socket.to_string(), address.to_string());
     }
 
 
