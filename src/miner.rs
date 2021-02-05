@@ -156,7 +156,7 @@ impl Miner {
 
     /// Message propagation to all neighbors
     /// * `message` - Message sent.
-    pub fn broadcast(&self, message: &String) {
+    pub fn broadcast(&self, message: &String, flag: Flag) {
         // For each neighbor
         println!("Propaging: {}", &message);
         for (_, neighbor_address) in &self.network {
@@ -164,7 +164,7 @@ impl Miner {
             thread::scope(|s| {
                 s.spawn(move |_| {
                     // Connect to neighbor             
-                    self.send_message(&neighbor_address, &message, Flag::Ok); // TODO : Change Flag
+                    self.send_message(&neighbor_address, &message, flag); // TODO : Change Flag
                 });
             });
         }
@@ -206,19 +206,17 @@ impl Miner {
                         self.remove_from_network(peer_id, peer_addr);
                     }
                     Flag::Ok => {
-                        let received_network: String = std::str::from_utf8(&data[0..]).unwrap().to_string().replace(" ", "");
-                        println!("Reply is ok!\nNetwork:{} \n {}", &received_network, &received_network.chars().count());
+                        let received_network: &String = &message;
+                        println!("Reply is ok!\nNetwork:{} \n {}", received_network, received_network.chars().count());
                         println!("{} ",&received_network.chars().nth(40).unwrap_or('0'));
                         let network: HashSet<(u32,String)> = hashset_from_string(received_network.to_string());
-                        for (i,e) in &network {
-                            println!("{}, {}",i,e);
-                        }
-                        // self.network | network;
+
                         self.network = self.network.union(&network).into_iter().cloned().collect::<HashSet<_>>();
                         println!("New network: ");
                         for (i,e) in &self.network {
                             println!("{}, {}",i,e);
                         }
+                        self.broadcast(&message, flag);
                     }
                     _ => { println!("Error: flag not recognized"); }
                 } 
