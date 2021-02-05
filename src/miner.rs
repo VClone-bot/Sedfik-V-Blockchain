@@ -202,15 +202,16 @@ impl Miner {
     /// Function to send a message
     /// * `stream` - Tcp Stream.
     /// * `message` - The message to send.
-    pub fn send_message(&self, destination: &String, message: &String, flag: Flag) {
+    pub fn send_message(&self, destination: &String, message: &String, flag: Flag) -> Result<u8,&'static str> {
         println!("Sending message: {} \nTo: {}",&message, &destination);
         if let Ok(mut stream) = TcpStream::connect(&destination) {
             let m: &[u8] = &encode_message(flag, self.sockip.to_string(), message.to_string());
             //&concat_u8(&[flag as u8], &message.as_bytes()[0..]); // TODO : Does the flag still is first byte ?
             stream.write(m);
             println!("Message sended");
+            Ok(0)
         } else {
-            println!("Connection with {} failed.", &destination);
+            Err("Connection failed.")
         }
     }
 
