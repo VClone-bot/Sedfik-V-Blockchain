@@ -74,10 +74,12 @@ pub fn decode_sockip(sockip: String) -> String {
 }
 
 
-pub fn decode_mesage(msg : &[u8]) -> (Flag, String, String){
+pub fn decode_message(msg : &[u8]) -> (Flag, String, String){
     let flag = Flag::from_u8(msg[0]); // get the flag
-    let sockip = std::str::from_utf8(&msg[1..21]).unwrap();
+    let sockip_encoded = std::str::from_utf8(&msg[1..21]).unwrap();
     let msg = std::str::from_utf8(&msg[22..]).unwrap();
+
+    let sockip = decode_sockip(sockip_encoded.to_string());
 
     (flag, decode_sockip(sockip.to_string()), msg.to_string())
 }
@@ -179,7 +181,7 @@ impl Miner {
         while match stream.read(&mut data) { 
             Ok(size) if size > 0 => { // If a message is received
                 println!("Message received of size: {}", &size);
-                let tuple : (Flag, String, String) = decode_mesage(&data);
+                let tuple : (Flag, String, String) = decode_message(&data);
                 //let flag = Flag::from_u8(data[0]); // get the flag
                 let flag = tuple.0;
                 println!("\tFlag: {}", &data[0]);
@@ -189,16 +191,17 @@ impl Miner {
                 println!("\tMessage: {}", &message);
 
                 let text = &message[1..]; // get the remainder of the message
-                let sockip = tuple.1;
-                println!("\tSockIp: {}", &sockip);
+                let sender_sockip = tuple.1;
+                println!("\tSockIp: {}", &sender_sockip);
 
                 // select appropriate response based on the flag, convert the u8 number to flag
                 match flag {
                     Flag::Connect => {
                         println!("OK!");
                         //let destination = format!("{}:{}",&stream.local_addr().unwrap().ip().to_string(),&stream.local_addr().unwrap().port().to_string());
-                        let destination = sockip;
+                        let destination = &sender_sockip;
                         self.send_message(&destination , &hashset_to_string(&self.network), Flag::Ok);
+                        self.add_to_network(0, sender_sockip);
                     }
                     Flag::Disconnect => {
                         let peer_id = text[1..4].parse::<u32>().unwrap();
@@ -267,6 +270,10 @@ impl Miner {
                     println!("Error: {}", e);
                     /* connection failed */
                 }
+            }
+            println!("\nCurrent network:");
+            for miner in &self.network {
+                println!("\tid: {}, sockip: {}", miner.0, miner.1);
             } 
         }
         // close the socket server
