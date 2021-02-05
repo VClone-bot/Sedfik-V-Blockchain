@@ -1,9 +1,7 @@
 use std::net::{TcpStream, TcpListener, Shutdown};
 use std::fmt::{self, Debug, Formatter};
 use std::io::{Read, Write};
-use std::str::from_utf8;
-use std::str::FromStr;
-use crossbeam_utils::thread;
+// use crossbeam_utils::thread;
 use std::collections::HashSet;
 
 #[path="./block.rs"]
@@ -194,8 +192,11 @@ impl Miner {
     /// * `destination` - the ip:port of the Miner we want to join
     pub fn join(&self, destination: String) {
         // Connexion au socket distant
-        self.send_message(&destination, &"".to_string(),Flag::Connect);
-        println!("Join done.");
+        match self.send_message(&destination, &"".to_string(),Flag::Connect) {
+            Ok(_) => println!("Join done."),
+            Err(e) => println!("Err: {}", e),
+        }
+        
     }
 
     
@@ -207,7 +208,11 @@ impl Miner {
         if let Ok(mut stream) = TcpStream::connect(&destination) {
             let m: &[u8] = &encode_message(flag, self.sockip.to_string(), message.to_string());
             //&concat_u8(&[flag as u8], &message.as_bytes()[0..]); // TODO : Does the flag still is first byte ?
-            stream.write(m);
+            match stream.write(m) {
+                Ok(_) => print!(""),
+                Err(e) => print!("{}",e.to_string()),
+
+            }
             println!("Message sended");
             Ok(0)
         } else {
@@ -268,7 +273,10 @@ impl Miner {
                         println!("OK!");
                         //let destination = format!("{}:{}",&stream.local_addr().unwrap().ip().to_string(),&stream.local_addr().unwrap().port().to_string());
                         let destination = &sender_sockip;
-                        self.send_message(&destination , &hashset_to_string(&self.network), Flag::Ok);
+                        match self.send_message(&destination , &hashset_to_string(&self.network), Flag::Ok) {
+                            Ok(_) => println!(""),
+                            Err(e) => println!("Err: {}", e),
+                        }
                         self.add_to_network(0, sender_sockip);
                     }
                     Flag::Disconnect => {
@@ -291,7 +299,10 @@ impl Miner {
                     }
                     Flag::RequireID => {
                         let next_id = self.retrieve_next_id().to_string();
-                        self.send_message(&sender_sockip, &next_id, Flag::GiveID);
+                        match self.send_message(&sender_sockip, &next_id, Flag::GiveID) {
+                            Ok(_) => println!(""),
+                            Err(e) => println!("Err: {}", e),
+                        }
                     }
                     _ => { println!("Error: flag not recognized"); }
                 } 
