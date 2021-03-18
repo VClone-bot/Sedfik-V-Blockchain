@@ -4,6 +4,7 @@ use std::io::{Read, Write};
 use crossbeam_utils::thread;
 use std::collections::HashSet;
 
+
 #[path="./block.rs"]
 mod block;
 
@@ -16,7 +17,9 @@ pub enum Flag {
     RequireID,
     GiveID,
     BroadcastConnect,
-    BroadcastDisconnect
+    BroadcastDisconnect,
+    Check,
+    Ack,
 }
 
 impl Flag {
@@ -29,6 +32,8 @@ impl Flag {
             4 => Flag::GiveID,
             5 => Flag::BroadcastConnect,
             6 => Flag::BroadcastDisconnect,
+            7 => Flag::Check,
+            8 => Flag::Ack,
             _ => panic!("Unknown value: {}", value),
         }
     }
@@ -356,11 +361,19 @@ impl Miner {
                             println!("{}, {}",i,e);
                         }
                         // self.broadcast(&message, flag);
+                        self.refresh_nodes_status();
                     }
                     Flag::RequireID => {
                         println!("RequireID Flag received");
                         let next_id = self.retrieve_next_id().to_string();
                         self.send_message(&sender_sockip, &next_id, Flag::GiveID);
+                    }
+                    Flag::Check => {
+                        println!("Check Flag received");
+                        self.send_message(&sender_sockip, &String::from(""), Flag::Ack);
+                    }
+                    Flag::Ack => {
+                        println!("Ack Flag received: Do nothing");     
                     }
                     Flag::BroadcastConnect => {
                         println!("BroadcastConnect Flag received");
@@ -405,7 +418,7 @@ impl Miner {
     pub fn remove_from_network(&mut self, peer_id: u32, peer_addr: String) -> bool {
         self.network.remove(&(peer_id, peer_addr))
     }
-
+    
     /// Function to listen for incoming Streams from the network
     /// Read the stream and spawn a thread to handle the received data
     pub fn listen(mut self) {
@@ -416,7 +429,7 @@ impl Miner {
             match stream {
                 Ok(stream) => {
                     println!("New connection: {}", &stream.peer_addr().unwrap());  
-                    self.handle_client(stream);
+                    &self.handle_client(stream);
                 }
                 Err(e) => {
                     println!("Error: {}", e);
@@ -428,6 +441,33 @@ impl Miner {
         // close the socket server
         println!("Closing listener");
         drop(listener);
+    }
+
+    /// Function to refresh all nodes status and remove those are not accessible
+    pub fn refresh_nodes_status(&mut self){
+        let nodes: &HashSet<(u32,String)> = &self.network.to_owned();
+        for (id,addr) in nodes {
+            &self.health_check(&addr, &id);
+        }
+    }
+
+    /// health_check
+    /// ping the destination. If it doesn't respond ok or at time, removing the destination node from network
+    /// 
+    pub fn health_check(&mut self, destination: &String, id: &u32) -> Result<u8,&'static str>{
+        let result = &self.send_message(destination, &String::from(""), Flag::Check);  
+         
+        match result{
+            Ok(code) => { println!("Ok healthcheck: {}", code); }
+            Err(error) => {
+                println!("HealthCheck failed: {}", &error);
+                println!("Removing node: {},{}", &id, &destination);
+                &self.remove_from_network(*id, String::from(destination));
+                println!("node removed");
+            }
+
+        }
+        Ok(0)
     }
 
 }
