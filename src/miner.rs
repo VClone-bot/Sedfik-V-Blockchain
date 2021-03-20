@@ -7,6 +7,9 @@ use std::collections::HashSet;
 #[path="./block.rs"]
 mod block;
 
+#[path="./wallet.rs"]
+mod wallet;
+
 #[derive(Copy, Clone)]
 pub enum Flag {
     /// Ok -> Network
@@ -16,7 +19,8 @@ pub enum Flag {
     RequireID,
     GiveID,
     BroadcastConnect,
-    BroadcastDisconnect
+    BroadcastDisconnect,
+    RequireWalletID,
 }
 
 impl Flag {
@@ -29,6 +33,7 @@ impl Flag {
             4 => Flag::GiveID,
             5 => Flag::BroadcastConnect,
             6 => Flag::BroadcastDisconnect,
+            7 => Flag::RequireWalletID,
             _ => panic!("Unknown value: {}", value),
         }
     }
@@ -191,9 +196,10 @@ pub fn handle_id(mut stream: TcpStream) -> u32 {
 
 pub struct Miner {
     pub id: u32, // Our ID
-    pub network: HashSet<(u32, String)>, // The IDs of every member of the network, always unique
+    pub network: HashSet<(u32, String)>, // The IDs and adresses of every member of the network, always unique
     pub blocks: Vec<block::Block>, // The blocks calculated by us
     pub sockip: String,
+    pub wallets: HashSet<(u32, String)>,
 }
 
 impl Miner {
@@ -375,6 +381,12 @@ impl Miner {
                             self.broadcast_to_network(&message, Flag::BroadcastConnect, sender_sockip);
                         }
                     }
+                    Flag::RequireWalletID => {
+                        println!("Required Wallet ID Flag Received");
+                        let next_id = self.wallets.len()+1;
+                        self.send_message(&sender_sockip, &next_id, Flag::GiveID);
+                        self.add_to_wallets(&next_id, &sender_sockip)
+                    }
                     _ => { println!("Error: flag not recognized"); }
                 } 
                 data = [0 as u8; TRAM_SIZE];
@@ -430,6 +442,72 @@ impl Miner {
         drop(listener);
     }
 
+    pub fn ask_for_id(socket: &String, destination: &String) -> u32 {
+        println!("Asking {} for id...", &destination);
+        let listener = TcpListener::bind(&socket).unwrap();
+        let mut id: u32 = 0;
+    
+        if let Ok(mut stream) = TcpStream::connect(&destination) {
+            let m: &[u8] = &encode_message(Flag::RequireID, socket.to_string(), "".to_string(), "".to_string());
+            match stream.write(m) {
+                Ok(_) => { println!("Asked for id"); }
+                Err(e) => { println!("Error: {}", e); }
+            }
+            println!("Message sended");
+        }
+    
+        for stream in listener.incoming() {
+            match stream {
+                Ok(stream) => {
+                    println!("Getting ID from Genesis");
+                    id = handle_id(stream);
+                    println!("My ID is {}.", &id);
+                    return id;
+                }
+                Err(e) => {
+                    println!("Error: {}", e);
+                    return 0;
+                }
+            }
+        }
+        return id;
+    } 
+
+    /// Function to give a connecting wallet its id
+    pub fn ask_miner_for_wallet_id(&socket, &miner) -> u32 {
+        println!("Asking {} for wallet ID", &destination);
+        let listener = TcpListener::bind(&socket).unwrap()
+        let mut id: u32 = 0;
+
+        if let Ok(mut stream) = TcpStream::connect(&miner) {
+            let m: &[u8] = &encode_message(Flag::RequireWalletID, socket.to_string(), "".to_string(), "".to_string());
+            match stream.write(m) {
+                Ok(_) => { println!("Asked for id"); }
+                Err(e) => { println!("Error: {}", e); }
+            }
+            println!("Message sended, wallet added to miner's wallet list");
+        }
+
+        for stream in listener.incoming() {
+            match stream {
+                Ok(stream) => {
+                    println!("Getting ID from Miner");
+                    id = handle_id(stream);
+                    println!("My ID is {}", &id);
+                    return id;
+                }
+                Err(e) => {
+                    println!("Error: {}", e);
+                    return 0;
+                }
+            }
+        }
+        return id;
+    }
+
+    pub fn add_to_wallets(&mut self, peer_id: u32, peer_addr: String) -> bool {
+        self.wallets.insert((peer_id, peer_addr))
+    }    
 }
 
 impl Debug for Miner {

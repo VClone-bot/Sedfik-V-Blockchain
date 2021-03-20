@@ -1,5 +1,6 @@
 use std::env;
 mod miner;
+mod wallet;
 
 fn main() {
 
@@ -28,6 +29,8 @@ fn main() {
         role = "creator";
     } else if &args[1] == "-j" || &args[1] == "--join" {
         role = "joiner";
+    } else if &args[1] == '-w' || $args[1] == "--wallet" {
+        role = "wallet";
     } else {
         println!("miner: operation not recognized");
         return ();
@@ -43,6 +46,9 @@ fn main() {
         miner::create_miner('j',socket.to_string(), address.to_string());
     }
 
+    if role == "wallet" {
+        wallet::create_wallet(socket.to_string(), address.to_string());
+    }
 
     return ();
 }
