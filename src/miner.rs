@@ -3,6 +3,7 @@ use std::fmt::{self, Debug, Formatter};
 use std::io::{Read, Write};
 use crossbeam_utils::thread;
 use std::collections::HashSet;
+use std::time::{Duration, Instant};
 
 
 #[path="./block.rs"]
@@ -67,7 +68,7 @@ pub fn hashset_from_string(hashset :String) -> HashSet<(u32, String)> {
 }
 
 const TRAM_SIZE: usize = 100;
-
+const REFRESH_TIME: u64 = 15;
 /// Util
 /// Conctene u8 array
 /// * `first`
@@ -423,6 +424,7 @@ impl Miner {
     /// Read the stream and spawn a thread to handle the received data
     pub fn listen(mut self) {
         println!("Server listening on port {}", &self.sockip);
+        let mut init_time = Instant::now();
         let listener = TcpListener::bind(&self.sockip).unwrap();
         // accept connections and process them, spawning a new thread for each one
         for stream in listener.incoming() {
@@ -436,6 +438,12 @@ impl Miner {
                     /* connection failed */
                 }
             }
+            println!("Time spend: {}",&init_time.elapsed().as_secs());
+            if init_time.elapsed().as_secs() >= REFRESH_TIME {
+                println!("Check time spend");
+                init_time = Instant::now();
+                &self.refresh_nodes_status();
+            }
             self.display_network();
         }
         // close the socket server
@@ -447,7 +455,10 @@ impl Miner {
     pub fn refresh_nodes_status(&mut self){
         let nodes: &HashSet<(u32,String)> = &self.network.to_owned();
         for (id,addr) in nodes {
-            &self.health_check(&addr, &id);
+            if id != &self.id {
+                &self.health_check(&addr, &id);
+            }
+            
         }
     }
 
