@@ -4,6 +4,8 @@ use std::io::{Read, Write};
 use crossbeam_utils::thread;
 use std::collections::HashSet;
 
+use std::time::{SystemTime, UNIX_EPOCH};
+
 #[path="./block.rs"]
 mod block;
 
@@ -428,6 +430,15 @@ impl Miner {
         // close the socket server
         println!("Closing listener");
         drop(listener);
+    }
+
+    pub fn hash_block(self){
+        //Je hache le contenu en mettant le hash de l'ancien bloc sur prev_hash
+        //On prend un tab de String qui est l'ensemble des actions
+        let ensembleTransactions : vec![String];
+        let dernierBlock = self.blocks.last();
+        let timestampInMs = 
+        let nouveauBLoc = block.Block::new(dernierBlock.index + 1, ensembleTransactions, )
     }
 
 }
