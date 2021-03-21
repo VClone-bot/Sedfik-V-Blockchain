@@ -1,9 +1,10 @@
+use std::str::FromStr;
 use std::env;
 mod miner;
-
+mod block;
 fn main() {
 
-    // let block = Block::new(0, "Premier bloc".to_owned(), 0, 0, vec![0; 32]);
+    // let block = block::Block::from_str(&block::Block::new(0, "Premier bloc".to_owned(), 0, 0, vec![0; 32]).to_string());
     // println!("{:?}", &block);
 
     let args: Vec<String> = env::args().collect();
