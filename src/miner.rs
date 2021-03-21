@@ -208,6 +208,7 @@ pub struct Miner {
     pub network: HashSet<(u32, String)>, // The IDs of every member of the network, always unique
     pub blocks: Vec<block::Block>, // The blocks calculated by us
     pub sockip: String,
+    pub payload: Vec<String>,
 }
 
 impl Miner {
@@ -221,6 +222,7 @@ impl Miner {
             network: HashSet::new(),
             blocks: Vec::new(),
             sockip: socket.to_string(),
+            payload: Vec::new(),
         }        
     }
 
@@ -535,6 +537,43 @@ impl Miner {
         } else {
             return false
         }
+    }
+
+    pub fn hash_block(self, ensembleTransactions: String) -> block::Block{
+       
+        let dernierBlock = self.blocks.last().unwrap();
+        let start = SystemTime::now();
+        let since_the_epoch = start
+        .duration_since(UNIX_EPOCH)
+        .expect("Time went backwards");
+        let timestampInMs = since_the_epoch.as_millis();
+        let nonce: u32 = 5;
+        
+        let indexString: String = (dernierBlock.index + 1).to_string();
+        let timestampString: String = timestampInMs.to_string();
+        let payloadString: String = self.payload.join("");
+        let nonceString: String = nonce.to_string();
+        let previousHash = &dernierBlock.hash;
+        let previousHashString: String = hex::encode(previousHash);
+
+
+        let mut to_hash= indexString + &payloadString;
+        to_hash = to_hash + &timestampString;
+        to_hash = to_hash + &nonceString;
+        to_hash = to_hash + &previousHashString;
+
+        let mut sha256 = Sha256::new();
+        sha256.update(to_hash);
+        let final_hash: String = format!("{:X}", sha256.finalize());
+        let final_hash_vec_u8 = final_hash.as_bytes();
+        return block::Block{
+            index:dernierBlock.index + 1, 
+            payload: ensembleTransactions, 
+            timestamp: timestampInMs, 
+            nonce:5, 
+            prev_hash: dernierBlock.hash.to_owned(), 
+            hash: final_hash_vec_u8.to_vec()
+        };
     }
 
 }
