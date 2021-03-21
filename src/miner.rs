@@ -4,7 +4,8 @@ use std::io::{Read, Write};
 use crossbeam_utils::thread;
 use std::collections::HashSet;
 use std::time::{Duration, Instant};
-
+use std::time::{SystemTime, UNIX_EPOCH};
+use sha2::{Sha256, Sha512, Digest};
 
 #[path="./block.rs"]
 mod block;
