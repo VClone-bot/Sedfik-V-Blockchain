@@ -38,6 +38,7 @@ fn main() {
 
     if role == "joiner" {
         address = &args[3];
+        miner::create_miner('j',socket.to_string(), address.to_string());
     }
 
     if role == "creator" {
