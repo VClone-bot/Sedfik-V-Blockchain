@@ -21,7 +21,8 @@ pub enum Flag {
     BroadcastDisconnect,
     Check,
     Ack,
-    Block
+    Block,
+    Trasaction,
 }
 
 impl Flag {
@@ -37,6 +38,7 @@ impl Flag {
             7 => Flag::Check,
             8 => Flag::Ack,
             9 => Flag::Block,
+            10 => Flag::Trasaction,
             _ => panic!("Unknown value: {}", value),
         }
     }
@@ -387,6 +389,17 @@ impl Miner {
                         // } else {
                             // Invalid block
                         //}   
+                    }
+                    Flag::Trasaction => {
+                        println!("Transaction Flag received");
+                        // Je regarde si je l'ai deja
+                        // if !&self.payload.contains(&message) {
+                        //     &self.payload.put(String::from(message).to_owned());
+                        //     &self.broadcast_to_network(&message, Flag::Trasaction, sender_sockip);
+                        // }
+                        // Check payload size
+                        // if == BLOCK_PAYLOAD_SIZE
+                            // mine block
                     }
                     Flag::BroadcastConnect => {
                         println!("BroadcastConnect Flag received");
