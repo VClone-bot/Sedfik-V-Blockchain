@@ -3,6 +3,8 @@ use std::fmt::{self, Debug, Formatter};
 use std::io::{Read, Write};
 use crossbeam_utils::thread;
 use std::collections::HashSet;
+use std::time::{Duration, Instant};
+
 
 use std::time::{SystemTime, UNIX_EPOCH};
 use std::convert::TryFrom;
@@ -20,7 +22,10 @@ pub enum Flag {
     RequireID,
     GiveID,
     BroadcastConnect,
-    BroadcastDisconnect
+    BroadcastDisconnect,
+    Check,
+    Ack,
+    Block
 }
 
 impl Flag {
@@ -33,6 +38,9 @@ impl Flag {
             4 => Flag::GiveID,
             5 => Flag::BroadcastConnect,
             6 => Flag::BroadcastDisconnect,
+            7 => Flag::Check,
+            8 => Flag::Ack,
+            9 => Flag::Block,
             _ => panic!("Unknown value: {}", value),
         }
     }
@@ -66,7 +74,7 @@ pub fn hashset_from_string(hashset :String) -> HashSet<(u32, String)> {
 }
 
 const TRAM_SIZE: usize = 100;
-
+const REFRESH_TIME: u64 = 15;
 /// Util
 /// Conctene u8 array
 /// * `first`
@@ -360,11 +368,29 @@ impl Miner {
                             println!("{}, {}",i,e);
                         }
                         // self.broadcast(&message, flag);
+                        self.refresh_nodes_status();
                     }
                     Flag::RequireID => {
                         println!("RequireID Flag received");
                         let next_id = self.retrieve_next_id().to_string();
                         self.send_message(&sender_sockip, &next_id, Flag::GiveID);
+                    }
+                    Flag::Check => {
+                        println!("Check Flag received");
+                        self.send_message(&sender_sockip, &String::from(""), Flag::Ack);
+                    }
+                    Flag::Ack => {
+                        println!("Ack Flag received: Do nothing");     
+                    }
+                    Flag::Block => {
+                        println!("Block received");
+                        // Check block
+                        // if &self.check_block(block::Block::from(message)){
+                            // forward block
+                            // &self.broadcast_to_network(message, Flag::Block,sender_sockip);  
+                        // } else {
+                            // Invalid block
+                        //}   
                     }
                     Flag::BroadcastConnect => {
                         println!("BroadcastConnect Flag received");
@@ -409,23 +435,30 @@ impl Miner {
     pub fn remove_from_network(&mut self, peer_id: u32, peer_addr: String) -> bool {
         self.network.remove(&(peer_id, peer_addr))
     }
-
+    
     /// Function to listen for incoming Streams from the network
     /// Read the stream and spawn a thread to handle the received data
     pub fn listen(mut self) {
         println!("Server listening on port {}", &self.sockip);
+        let mut init_time = Instant::now();
         let listener = TcpListener::bind(&self.sockip).unwrap();
         // accept connections and process them, spawning a new thread for each one
         for stream in listener.incoming() {
             match stream {
                 Ok(stream) => {
                     println!("New connection: {}", &stream.peer_addr().unwrap());  
-                    self.handle_client(stream);
+                    &self.handle_client(stream);
                 }
                 Err(e) => {
                     println!("Error: {}", e);
                     /* connection failed */
                 }
+            }
+            println!("Time spend: {}",&init_time.elapsed().as_secs());
+            if init_time.elapsed().as_secs() >= REFRESH_TIME {
+                println!("Check time spend");
+                init_time = Instant::now();
+                &self.refresh_nodes_status();
             }
             self.display_network();
         }
@@ -434,6 +467,7 @@ impl Miner {
         drop(listener);
     }
 
+<<<<<<< HEAD
     pub fn hash_block(self){
         //Je hache le contenu en mettant le hash de l'ancien bloc sur prev_hash
         //On prend un tab de String qui est l'ensemble des actions
@@ -454,6 +488,53 @@ impl Miner {
         let to_hash=
 
         let nouveauBloc = block.Block::new(dernierBlock.index + 1, ensembleTransactions, timestampInMs, 5);
+=======
+    /// Function to refresh all nodes status and remove those are not accessible
+    pub fn refresh_nodes_status(&mut self){
+        let nodes: &HashSet<(u32,String)> = &self.network.to_owned();
+        for (id,addr) in nodes {
+            if id != &self.id {
+                &self.health_check(&addr, &id);
+            }
+            
+        }
+    }
+
+    /// health_check
+    /// ping the destination. If it doesn't respond ok or at time, removing the destination node from network
+    /// 
+    pub fn health_check(&mut self, destination: &String, id: &u32) -> Result<u8,&'static str>{
+        let result = &self.send_message(destination, &String::from(""), Flag::Check);  
+         
+        match result{
+            Ok(code) => { println!("Ok healthcheck: {}", code); }
+            Err(error) => {
+                println!("HealthCheck failed: {}", &error);
+                println!("Removing node: {},{}", &id, &destination);
+                &self.remove_from_network(*id, String::from(destination));
+                println!("node removed");
+            }
+
+        }
+        Ok(0)
+    }
+
+    /// Fun to check if the received block is valid
+    /// 
+    /// `* block` the received block
+    /// Return true if the block is valid, false else
+    pub fn check_block(&self, block: block::Block) -> bool {
+        // Verif hash 
+        let last_block: &block::Block = &self.blocks.last().unwrap();
+        println!("Last block: {:?}", last_block);
+        println!("Received block: {:?}", block);
+        if &last_block.index == &(block.index+1) && &last_block.payload == &block.payload && &last_block.hash == &last_block.prev_hash {
+            // hash
+            return true
+        } else {
+            return false
+        }
+>>>>>>> origin/develop
     }
 
 }
