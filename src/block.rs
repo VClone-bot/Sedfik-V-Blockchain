@@ -16,14 +16,14 @@ use std::num::ParseIntError;
 pub struct Block {
     pub index: u32,
     pub payload: String,
-    pub timestamp: u64,
+    pub timestamp: u128,
     pub nonce: u64,
     pub prev_hash: Vec<u8>,
     pub hash: Vec<u8>,
 }
 
 impl Block {
-    pub fn new (index: u32, payload: String, timestamp: u64, nonce: u64, prev_hash: Vec<u8>) -> Self {
+    pub fn new (index: u32, payload: String, timestamp: u128, nonce: u64, prev_hash: Vec<u8>) -> Self {
         return Block {
             index,
             payload,
@@ -74,7 +74,7 @@ impl FromStr for Block {
         Ok(Block { 
             index: block.get("id").unwrap().parse::<u32>().unwrap(), 
             payload: block.get("payload").unwrap().to_string(),
-            timestamp: block.get("timestamp").unwrap().parse::<u64>().unwrap(), 
+            timestamp: block.get("timestamp").unwrap().parse::<u128>().unwrap(), 
             nonce: block.get("nonce").unwrap().parse::<u64>().unwrap(), 
             prev_hash: block.get("prev_hash").unwrap().as_bytes().to_vec(),
             hash:  block.get("hash").unwrap().as_bytes().to_vec(),
