@@ -74,7 +74,7 @@ impl FromStr for Block {
         Ok(Block { 
             index: block.get("id").unwrap().parse::<u32>().unwrap(), 
             payload: block.get("payload").unwrap().to_string(),
-            timestamp: block.get("timestamp").unwrap().parse::<u64>().unwrap(), 
+            timestamp: block.get("timestamp").unwrap().parse::<u128>().unwrap(), 
             nonce: block.get("nonce").unwrap().parse::<u64>().unwrap(), 
             prev_hash: block.get("prev_hash").unwrap().as_bytes().to_vec(),
             hash:  block.get("hash").unwrap().as_bytes().to_vec(),
