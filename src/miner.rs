@@ -23,6 +23,8 @@ pub enum Flag {
     Ack,
     Block,
     Trasaction,
+    MineTransaction,
+    OkMineTransaction,
 }
 
 impl Flag {
@@ -39,6 +41,8 @@ impl Flag {
             8 => Flag::Ack,
             9 => Flag::Block,
             10 => Flag::Trasaction,
+            11 => Flag::MineTransaction,
+            12 => Flag::OkMineTransaction,
             _ => panic!("Unknown value: {}", value),
         }
     }
@@ -400,6 +404,16 @@ impl Miner {
                         // Check payload size
                         // if == BLOCK_PAYLOAD_SIZE
                             // mine block
+                    }
+                    Flag::MineTransaction => {
+                        // Verif if transaction are in payload
+                        // If true
+                            // 
+                    }
+                    Flag::OkMineTransaction => {
+                        // Verif if transaction are in payload
+                        // If true
+                            // 
                     }
                     Flag::BroadcastConnect => {
                         println!("BroadcastConnect Flag received");
