@@ -181,7 +181,7 @@ pub fn handle_id(mut stream: TcpStream) -> u32 {
     match stream.read(&mut data) {
         Ok(size) if size > 0 => {
             let id_as_str_decoded = decode_id(std::str::from_utf8(&data[32..size]).unwrap().to_owned());
-            let id = id_as_str_decoded.parse::<u32>().unwrap();
+            let id = 3;//id_as_str_decoded.parse::<u32>().unwrap();
             return id;
         },
         Ok(_) => { println!("No message received");},
@@ -480,7 +480,7 @@ impl Miner {
         for stream in listener.incoming() {
             match stream {
                 Ok(stream) => {
-                    println!("Getting ID from Genesis");
+                    println!("Getting Miner ID from Genesis");
                     id = handle_id(stream);
                     println!("My ID is {}.", &id);
                     return id;
@@ -512,7 +512,7 @@ impl Miner {
         for stream in listener.incoming() {
             match stream {
                 Ok(stream) => {
-                    println!("Getting ID from Miner");
+                    println!("Getting Wallet ID from Miner");
                     id = handle_id(stream);
                     println!("My ID is {}", &id);
                     return id;

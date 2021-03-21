@@ -42,7 +42,7 @@ fn main() {
 
     if role == "creator" {
         miner::create_miner('c',socket.to_string(), String::new());
-    } else {
+    } else if role == "joiner" {
         miner::create_miner('j',socket.to_string(), address.to_string());
     }
 
