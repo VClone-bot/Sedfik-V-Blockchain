@@ -5,6 +5,8 @@ use crossbeam_utils::thread;
 use std::collections::HashSet;
 
 use std::time::{SystemTime, UNIX_EPOCH};
+use std::convert::TryFrom;
+
 
 #[path="./block.rs"]
 mod block;
@@ -436,9 +438,22 @@ impl Miner {
         //Je hache le contenu en mettant le hash de l'ancien bloc sur prev_hash
         //On prend un tab de String qui est l'ensemble des actions
         let ensembleTransactions : vec![String];
-        let dernierBlock = self.blocks.last();
-        let timestampInMs = 
-        let nouveauBLoc = block.Block::new(dernierBlock.index + 1, ensembleTransactions, )
+        let dernierBlock = self.blocks.last().unwrap();
+        let start = SystemTime::now();
+        let since_the_epoch = start
+        .duration_since(UNIX_EPOCH)
+        .expect("Time went backwards");
+        let timestampInMs = since_the_epoch.as_millis();
+        let nonce: u32 = 5;
+        
+        let indexString: String = (dernierBlock.index + 1).to_string();
+        let timestampString: String = timestampInMs.to_string();
+        let nonceString: String = nonce.to_string();
+        let previousHash = dernierBlock.prev_hash;
+        let previousHashString: String::from_utf8(previousHash);
+        let to_hash=
+
+        let nouveauBloc = block.Block::new(dernierBlock.index + 1, ensembleTransactions, timestampInMs, 5);
     }
 
 }

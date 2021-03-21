@@ -13,14 +13,14 @@ use std::fmt::{self, Debug, Formatter};
 pub struct Block {
     pub index: u32,
     pub payload: String,
-    pub timestamp: u64,
+    pub timestamp: u128,
     pub nonce: u64,
     pub prev_hash: Vec<u8>,
     pub hash: Vec<u8>,
 }
 
 impl Block {
-    pub fn new (index: u32, payload: String, timestamp: u64, nonce: u64, prev_hash: Vec<u8>) -> Self {
+    pub fn new (index: u32, payload: String, timestamp: u128, nonce: u64, prev_hash: Vec<u8>) -> Self {
         return Block {
             index,
             payload,
