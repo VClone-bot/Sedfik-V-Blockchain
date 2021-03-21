@@ -213,6 +213,7 @@ impl Miner {
             network: HashSet::new(),
             blocks: Vec::new(),
             sockip: socket.to_string(),
+            wallets: HashSet::new(),
         }        
     }
 
@@ -288,7 +289,10 @@ impl Miner {
             thread::scope(|s| {
                 s.spawn(move |_| {
                     // Connect to neighbor             
-                    self.send_message(&neighbor_address, &message, Flag::Ok); // TODO : Change Flag
+                    match self.send_message(&neighbor_address, &message, Flag::Ok) {
+                        Ok(_) => println!(""),
+                        Err(e) => println!("Err: {}", e),
+                    }
                 });
             });
         }
@@ -299,6 +303,17 @@ impl Miner {
         for (id, _) in &self.network {
             if id > max_id {
                 max_id = id;
+            }
+        }
+        println!("found id is {}", max_id);
+        return (max_id+1).to_owned();
+    }
+
+    pub fn retrieve_next_wallet_id(&self) -> u32 {
+        let mut max_id = 0;
+        for (id, _) in &self.wallets {
+            if id > &max_id {
+                max_id = *id;
             }
         }
         println!("found id is {}", max_id);
@@ -366,7 +381,10 @@ impl Miner {
                     Flag::RequireID => {
                         println!("RequireID Flag received");
                         let next_id = self.retrieve_next_id().to_string();
-                        self.send_message(&sender_sockip, &next_id, Flag::GiveID);
+                        match self.send_message(&sender_sockip, &next_id, Flag::GiveID) {
+                            Ok(_) => println!("ID correctement envoyé"),
+                            Err(e) => println!("Err: {}", e),
+                        }
                     }
                     Flag::BroadcastConnect => {
                         println!("BroadcastConnect Flag received");
@@ -383,9 +401,12 @@ impl Miner {
                     }
                     Flag::RequireWalletID => {
                         println!("Required Wallet ID Flag Received");
-                        let next_id = self.wallets.len()+1;
-                        self.send_message(&sender_sockip, &next_id, Flag::GiveID);
-                        self.add_to_wallets(&next_id, &sender_sockip)
+                        let next_id = self.retrieve_next_wallet_id();
+                        match self.send_message(&sender_sockip, &next_id.to_string(), Flag::GiveID) {
+                            Ok(_) => println!("ID Wallet bien envoyé"),
+                            Err(e) => println!("Err: {}", e),
+                        }
+                        self.add_to_wallets(next_id, sender_sockip);
                     }
                     _ => { println!("Error: flag not recognized"); }
                 } 
@@ -474,9 +495,9 @@ impl Miner {
     } 
 
     /// Function to give a connecting wallet its id
-    pub fn ask_miner_for_wallet_id(&socket, &miner) -> u32 {
-        println!("Asking {} for wallet ID", &destination);
-        let listener = TcpListener::bind(&socket).unwrap()
+    pub fn ask_miner_for_wallet_id(socket: &String, miner: &String) -> u32 {
+        println!("Asking {} for wallet ID", &miner);
+        let listener = TcpListener::bind(&socket).unwrap();
         let mut id: u32 = 0;
 
         if let Ok(mut stream) = TcpStream::connect(&miner) {

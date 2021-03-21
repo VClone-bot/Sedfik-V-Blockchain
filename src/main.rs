@@ -29,7 +29,7 @@ fn main() {
         role = "creator";
     } else if &args[1] == "-j" || &args[1] == "--join" {
         role = "joiner";
-    } else if &args[1] == '-w' || $args[1] == "--wallet" {
+    } else if &args[1] == "-w" || &args[1] == "--wallet" {
         role = "wallet";
     } else {
         println!("miner: operation not recognized");
