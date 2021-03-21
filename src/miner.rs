@@ -21,6 +21,7 @@ pub enum Flag {
     BroadcastDisconnect,
     Check,
     Ack,
+    Block
 }
 
 impl Flag {
@@ -35,6 +36,7 @@ impl Flag {
             6 => Flag::BroadcastDisconnect,
             7 => Flag::Check,
             8 => Flag::Ack,
+            9 => Flag::Block,
             _ => panic!("Unknown value: {}", value),
         }
     }
@@ -376,6 +378,16 @@ impl Miner {
                     Flag::Ack => {
                         println!("Ack Flag received: Do nothing");     
                     }
+                    Flag::Block => {
+                        println!("Block received");
+                        // Check block
+                        // if &self.check_block(block::Block::from(message)){
+                            // forward block
+                            // &self.broadcast_to_network(message, Flag::Block,sender_sockip);  
+                        // } else {
+                            // Invalid block
+                        //}   
+                    }
                     Flag::BroadcastConnect => {
                         println!("BroadcastConnect Flag received");
                         let splitted: Vec<&str> = message.split(";").collect();
@@ -479,6 +491,23 @@ impl Miner {
 
         }
         Ok(0)
+    }
+
+    /// Fun to check if the received block is valid
+    /// 
+    /// `* block` the received block
+    /// Return true if the block is valid, false else
+    pub fn check_block(&self, block: block::Block) -> bool {
+        // Verif hash 
+        let last_block: &block::Block = &self.blocks.last().unwrap();
+        println!("Last block: {:?}", last_block);
+        println!("Received block: {:?}", block);
+        if &last_block.index == &(block.index+1) && &last_block.payload == &block.payload && &last_block.hash == &last_block.prev_hash {
+            // hash
+            return true
+        } else {
+            return false
+        }
     }
 
 }
