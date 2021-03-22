@@ -141,9 +141,8 @@ impl Wallet {
             //On gère l'input de l'utilisateur
             match command {
                 UserCommand::Send => {
-                    let target = splitted[1].to_string(); 
-                    let message = splitted[2].to_string();
-                    println!("Response: {}\n", self.handle_user_input(command, target.to_string(), message.to_string()));
+                    let message = splitted[1].to_string();
+                    println!("Response: {}\n", self.handle_user_input(command, self.miner.to_string(), message.to_string()));
                 }
                 UserCommand::Check => {
                     println!("Response: {}\n", self.handle_user_input(command, "".to_string(), "".to_string()));
@@ -174,19 +173,7 @@ impl Wallet {
                     println!("Message sended");
                 }
 
-                for stream in listener.incoming() {
-                    match stream {
-                        Ok(stream) => {
-                            println!("Getting response from Miner");
-                            let response = self.handle_message(stream);
-                            return response;
-                        }
-                        Err(e) => {
-                            println!("Error: {}", e);
-                            return "Error".to_string();
-                        }
-                    }
-                }
+                
                 return "".to_string();
             }
             UserCommand::Check => {
