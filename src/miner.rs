@@ -23,11 +23,11 @@ pub enum Flag {
     GiveID,
     BroadcastConnect,
     BroadcastDisconnect,
+    Transaction,
     RequireWalletID,
     Check,
     Ack,
     Block,
-    Trasaction,
     MineTransaction,
     OkMineTransaction,
 }
@@ -45,7 +45,7 @@ impl Flag {
             7 => Flag::Check,
             8 => Flag::Ack,
             9 => Flag::Block,
-            10 => Flag::Trasaction,
+            10 => Flag::Transaction,
             11 => Flag::MineTransaction,
             12 => Flag::OkMineTransaction,
             13 => Flag::RequireWalletID,
@@ -421,7 +421,7 @@ impl Miner {
                             // Invalid block
                         //}   
                     }
-                    Flag::Trasaction => {
+                    Flag::Transaction => {
                         println!("Transaction Flag received");
                         // Je regarde si je l'ai deja
                         // if !&self.payload.contains(&message) {
