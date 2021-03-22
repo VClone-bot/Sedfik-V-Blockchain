@@ -23,13 +23,13 @@ pub enum Flag {
     GiveID,
     BroadcastConnect,
     BroadcastDisconnect,
-    RequireWalletID,
     Check,
     Ack,
     Block,
-    Trasaction,
+    Transaction,
     MineTransaction,
     OkMineTransaction,
+    RequireWalletID,
 }
 
 impl Flag {
@@ -45,7 +45,7 @@ impl Flag {
             7 => Flag::Check,
             8 => Flag::Ack,
             9 => Flag::Block,
-            10 => Flag::Trasaction,
+            10 => Flag::Transaction,
             11 => Flag::MineTransaction,
             12 => Flag::OkMineTransaction,
             13 => Flag::RequireWalletID,
@@ -196,8 +196,9 @@ pub fn handle_id(mut stream: TcpStream) -> u32 {
     let mut data = [0 as u8; 50];
     match stream.read(&mut data) {
         Ok(size) if size > 0 => {
-            let id_as_str_decoded = decode_id(std::str::from_utf8(&data[32..size]).unwrap().to_owned());
-            let id = 3;//id_as_str_decoded.parse::<u32>().unwrap();
+            let tuple : (Flag, String, String, String) = decode_message(&data);
+            let id_as_str_decoded = decode_id(std::str::from_utf8(tuple.2.as_bytes()).unwrap().to_owned());
+            let id = id_as_str_decoded.parse::<u32>().unwrap();
             return id;
         },
         Ok(_) => { println!("No message received");},
@@ -424,7 +425,7 @@ impl Miner {
                             // Invalid block
                         //}   
                     }
-                    Flag::Trasaction => {
+                    Flag::Transaction => {
                         println!("Transaction Flag received");
                         // Je regarde si je l'ai deja
                         if !&self.payload.contains(&message) {
