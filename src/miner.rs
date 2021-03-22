@@ -395,7 +395,7 @@ impl Miner {
                             println!("{}, {}",i,e);
                         }
                         // self.broadcast(&message, flag);
-                        // self.refresh_nodes_status();
+                        self.refresh_nodes_status();
                     }
                     Flag::RequireID => {
                         println!("RequireID Flag received");
@@ -518,7 +518,7 @@ impl Miner {
             if init_time.elapsed().as_secs() >= REFRESH_TIME {
                 println!("Check time spend");
                 init_time = Instant::now();
-                // &self.refresh_nodes_status();
+                &self.refresh_nodes_status();
             }
             self.display_network();
         }
