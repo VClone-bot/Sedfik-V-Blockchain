@@ -50,6 +50,8 @@ fn main() {
     }
 
     if role == "wallet" {
+        address = &args[3];
+        println!("wallet : {} ; {}",socket.to_string(), address.to_string());
         wallet::create_wallet(socket.to_string(), address.to_string());
     }
 
