@@ -13,7 +13,7 @@ use std::num::ParseIntError;
  * - Hash: l'empreinte cryptographique de toutes les données ci-dessus, concatanées ensemble
  */
 
-pub struct Block {
+ pub struct Block {
     pub index: u32,
     pub payload: String,
     pub timestamp: u128,
@@ -21,6 +21,7 @@ pub struct Block {
     pub prev_hash: Vec<u8>,
     pub hash: Vec<u8>,
 }
+
 
 impl Block {
     pub fn new (index: u32, payload: String, timestamp: u128, nonce: u64, prev_hash: Vec<u8>) -> Self {

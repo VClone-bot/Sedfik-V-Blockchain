@@ -2,14 +2,17 @@ use std::net::{TcpStream, TcpListener, Shutdown};
 use std::fmt::{self, Debug, Formatter};
 use std::io::{Read, Write};
 use crossbeam_utils::thread;
+// use std::thread;
 use std::collections::HashSet;
 use std::time::{Duration, Instant};
 use std::time::{SystemTime, UNIX_EPOCH};
 use sha2::{Sha256, Sha512, Digest};
 use log::{info, warn};
+use std::convert::TryFrom;
+use std::sync::{Mutex, Arc};
+use std::str::FromStr;
 
-#[path="./block.rs"]
-mod block;
+#[path="./block.rs"] mod block;
 
 #[path="./wallet.rs"]
 mod wallet;
@@ -219,6 +222,7 @@ pub struct Miner {
     pub sockip: String,
     pub wallets: HashSet<(u32, String)>,
     pub payload: Vec<String>,
+    pub current_block_id : u32,
 }
 
 impl Miner {
@@ -234,6 +238,7 @@ impl Miner {
             sockip: socket.to_string(),
             wallets: HashSet::new(),
             payload: Vec::new(),
+            current_block_id: 0,
         }        
     }
 
@@ -391,7 +396,7 @@ impl Miner {
                         println!("Reply is ok!\nNetwork: {} \n Count: {}", received_network, received_network.chars().count());
                         let network: HashSet<(u32,String)> = hashset_from_string(received_network.to_string());
 
-                        self.network = self.network.union(&network).into_iter().cloned().collect::<HashSet<_>>();
+                        self.network = self.network.union(&network).into_iter().cloned().collect::<HashSet<_>>().clone();
                         println!("New network: ");
                         for (i,e) in &self.network {
                             println!("{}, {}",i,e);
@@ -429,25 +434,53 @@ impl Miner {
                     Flag::Transaction => {
                         println!("Transaction Flag received");
                         // Je regarde si je l'ai deja
-                        if !&self.payload.contains(&message) {
-                            self.payload.push(String::from(&message).to_owned());
-                            &self.broadcast_to_network(&message, Flag::Transaction, sender_sockip.to_owned());
+                        let transaction : String = message.trim_matches(|c| c == char::from(0) || c == '\n').to_string();
+                        
+                        if !&self.payload.contains(&transaction) {
+                            self.payload.push(transaction.to_string());
+                            &self.broadcast_to_network(&transaction, Flag::Transaction, sender_sockip.to_owned());
                         }
+                        // TODO: Handle \u{0} char
+                        println!("{:?}",&self.payload);
+
                         // Check payload size
                         if &self.payload.len() == &BLOCK_PAYLOAD_SIZE {
-                            &self.broadcast_to_network(&self.payload.join(";").to_string(), Flag::MineTransaction, sender_sockip);
-                            let payload = &self.payload.to_owned();
+                            // &self.broadcast_to_network(&self.payload.join(";").to_string(), Flag::MineTransaction, sender_sockip);
+                            let payload = &self.payload.join("$").to_string();
+                            println!("Payload to mine: {}", payload);
+                            let mined_block : block::Block = self.hash_block(payload.to_string());
+                            println!("Mined block: {:?}", &mined_block);
+                            // Ajoute a la blockchain
+                            if self.blocks.len() as u32 == mined_block.index {
+                                &self.blocks.push(block::Block::from_str(&mined_block.to_string()).unwrap());
+                                &self.broadcast_to_network(&mined_block.to_string(), Flag::Block, sender_sockip.to_owned());
+                                println!("Chain: {:?}", &self.blocks);
+                            }
                             // TODO: Thread
+                                    // Lock var
+                            // let m = Mutex::new(0);
+                            // // let m = Mutex::new(self.current_block_id);
+                            // if let Ok(mut x) = m.lock() {
+                            //     println!("Thread 1 acquired lock");
+                            //     self.current_block_id += 1;
+                            // };   
+                            // let new_id = self.current_block_id;
+                            // println!("{}",new_id);  
+                            // std::mem::drop(m); // Unlock
                             // thread::scope(|s| {
                             //     s.spawn(move |_| {
-                                    // Connect to neighbor           
-                                    // mine   
-                                    &self.hash_block(String::from(payload.join(";")));
+                            //         let mined_block : block::Block = self.hash_block(payload.to_string());
+                            //         println!("Mined block: {:?}", &mined_block);
+                            //         // Ajoute a la blockchain
+                            //         if self.blocks.len() as u32 == mined_block.index {
+                            //             &self.blocks.push(&mined_block);
+                            //             &self.broadcast_to_network(&mined_block.to_string(), Flag::Block, sender_sockip.to_owned());
+                            //             println!("Chain: {:?}", &self.blocks);
+                            //         }
                             //     });
                             // });
-                            self.payload = Vec::new();
-                        }
                             
+                        }    
                     }
                     Flag::MineTransaction => {
                         // Verif if transaction are in payload
@@ -657,39 +690,50 @@ impl Miner {
         }
     }
 
-    pub fn hash_block(&self, ensembleTransactions: String) -> block::Block{
-       
-        let dernierBlock = self.blocks.last().unwrap();
+    pub fn hash_block(&self, transactions: String) -> block::Block{
+         
+      
+
         let start = SystemTime::now();
         let since_the_epoch = start
         .duration_since(UNIX_EPOCH)
         .expect("Time went backwards");
-        let timestampInMs = since_the_epoch.as_millis();
-        let nonce: u32 = 5;
+        let timestamp_ms = since_the_epoch.as_millis();
+        let nonce: u64 = 5;
         
-        let indexString: String = (dernierBlock.index + 1).to_string();
-        let timestampString: String = timestampInMs.to_string();
-        let payloadString: String = self.payload.join("");
-        let nonceString: String = nonce.to_string();
-        let previousHash = &dernierBlock.hash;
-        let previousHashString: String = hex::encode(previousHash);
+        let index_: u32;
+        let timestamp_: u128 = timestamp_ms;
+        let payload_: String = transactions;
+        let nonce_: u64 = nonce;
+        let previous_hash_: String;
+        
+        let last_block: &block::Block;
+        match self.blocks.last() {
+            Some(block) => {
+                last_block = block;
+                index_ = last_block.index + 1;
+                previous_hash_ = hex::encode(&last_block.hash);
+            }
+            _ => {
+                // Genesis
+                index_ = 0;
+                previous_hash_ = hex::encode("");
+            }
+        } 
 
+        let to_hash = index_.to_string() + &payload_ + &timestamp_.to_string() + &nonce_.to_string() + &previous_hash_;
 
-        let mut to_hash= indexString + &payloadString;
-        to_hash = to_hash + &timestampString;
-        to_hash = to_hash + &nonceString;
-        to_hash = to_hash + &previousHashString;
 
         let mut sha256 = Sha256::new();
         sha256.update(to_hash);
         let final_hash: String = format!("{:X}", sha256.finalize());
         let final_hash_vec_u8 = final_hash.as_bytes();
         return block::Block{
-            index:dernierBlock.index + 1, 
-            payload: ensembleTransactions, 
-            timestamp: timestampInMs, 
-            nonce:5, 
-            prev_hash: dernierBlock.hash.to_owned(), 
+            index: index_, 
+            payload: payload_, 
+            timestamp: timestamp_, 
+            nonce: nonce_, 
+            prev_hash: previous_hash_.as_bytes().iter().cloned().collect(), 
             hash: final_hash_vec_u8.to_vec()
         };
     }
