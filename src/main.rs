@@ -15,7 +15,7 @@ fn main() {
     let matches = App::new("Blockchain")
         .version("0.1.0")
         .author("Team ViVaSi <vivasi@u.fr>")
-        .about("Blockchain")
+        .about("Projet Blockchain - UE15 - M2ISD")
         .arg(Arg::with_name("create")
                  .short("c")
                  .long("create")
