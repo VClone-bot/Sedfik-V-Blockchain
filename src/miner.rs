@@ -3,6 +3,9 @@ use std::fmt::{self, Debug, Formatter};
 use std::io::{Read, Write};
 use crossbeam_utils::thread;
 use std::collections::HashSet;
+use std::time::{Duration, Instant};
+use std::time::{SystemTime, UNIX_EPOCH};
+use sha2::{Sha256, Sha512, Digest};
 
 #[path="./block.rs"]
 mod block;
@@ -20,9 +23,13 @@ pub enum Flag {
     GiveID,
     BroadcastConnect,
     BroadcastDisconnect,
-    Transaction,
-    RequireWalletID,
     Check,
+    Ack,
+    Block,
+    Transaction,
+    MineTransaction,
+    OkMineTransaction,
+    RequireWalletID,
 }
 
 impl Flag {
@@ -35,9 +42,13 @@ impl Flag {
             4 => Flag::GiveID,
             5 => Flag::BroadcastConnect,
             6 => Flag::BroadcastDisconnect,
+            7 => Flag::Check,
+            8 => Flag::Ack,
+            9 => Flag::Block,
             10 => Flag::Transaction,
-            11 => Flag::RequireWalletID,
-            12 => Flag::Check,
+            11 => Flag::MineTransaction,
+            12 => Flag::OkMineTransaction,
+            13 => Flag::RequireWalletID,
             _ => panic!("Unknown value: {}", value),
         }
     }
@@ -71,7 +82,7 @@ pub fn hashset_from_string(hashset :String) -> HashSet<(u32, String)> {
 }
 
 const TRAM_SIZE: usize = 100;
-
+const REFRESH_TIME: u64 = 15;
 /// Util
 /// Conctene u8 array
 /// * `first`
@@ -186,8 +197,7 @@ pub fn handle_id(mut stream: TcpStream) -> u32 {
         Ok(size) if size > 0 => {
             let tuple : (Flag, String, String, String) = decode_message(&data);
             let id_as_str_decoded = decode_id(std::str::from_utf8(tuple.2.as_bytes()).unwrap().to_owned());
-            print!("tuple:{},{},{},{}",&data[0],tuple.1,tuple.2,tuple.3);
-            let id = 3;//id_as_str_decoded.parse::<u32>().unwrap();
+            let id = id_as_str_decoded.parse::<u32>().unwrap();
             return id;
         },
         Ok(_) => { println!("No message received");},
@@ -206,6 +216,7 @@ pub struct Miner {
     pub blocks: Vec<block::Block>, // The blocks calculated by us
     pub sockip: String,
     pub wallets: HashSet<(u32, String)>,
+    pub payload: Vec<String>,
 }
 
 impl Miner {
@@ -220,6 +231,7 @@ impl Miner {
             blocks: Vec::new(),
             sockip: socket.to_string(),
             wallets: HashSet::new(),
+            payload: Vec::new(),
         }        
     }
 
@@ -383,6 +395,7 @@ impl Miner {
                             println!("{}, {}",i,e);
                         }
                         // self.broadcast(&message, flag);
+                        // self.refresh_nodes_status();
                     }
                     Flag::RequireID => {
                         println!("RequireID Flag received");
@@ -391,6 +404,44 @@ impl Miner {
                             Ok(_) => println!("ID correctement envoyé"),
                             Err(e) => println!("Err: {}", e),
                         }
+                    }
+                    Flag::Check => {
+                        println!("Check Flag received");
+                        self.send_message(&sender_sockip, &String::from(""), Flag::Ack);
+                    }
+                    Flag::Ack => {
+                        println!("Ack Flag received: Do nothing");     
+                    }
+                    Flag::Block => {
+                        println!("Block received");
+                        // Check block
+                        // if &self.check_block(block::Block::from(message)){
+                            // forward block
+                            // &self.broadcast_to_network(message, Flag::Block,sender_sockip);  
+                        // } else {
+                            // Invalid block
+                        //}   
+                    }
+                    Flag::Transaction => {
+                        println!("Transaction Flag received");
+                        // Je regarde si je l'ai deja
+                        // if !&self.payload.contains(&message) {
+                        //     &self.payload.put(String::from(message).to_owned());
+                        //     &self.broadcast_to_network(&message, Flag::Trasaction, sender_sockip);
+                        // }
+                        // Check payload size
+                        // if == BLOCK_PAYLOAD_SIZE
+                            // mine block
+                    }
+                    Flag::MineTransaction => {
+                        // Verif if transaction are in payload
+                        // If true
+                            // 
+                    }
+                    Flag::OkMineTransaction => {
+                        // Verif if transaction are in payload
+                        // If true
+                            // 
                     }
                     Flag::BroadcastConnect => {
                         println!("BroadcastConnect Flag received");
@@ -444,23 +495,30 @@ impl Miner {
     pub fn remove_from_network(&mut self, peer_id: u32, peer_addr: String) -> bool {
         self.network.remove(&(peer_id, peer_addr))
     }
-
+    
     /// Function to listen for incoming Streams from the network
     /// Read the stream and spawn a thread to handle the received data
     pub fn listen(mut self) {
         println!("Server listening on port {}", &self.sockip);
+        let mut init_time = Instant::now();
         let listener = TcpListener::bind(&self.sockip).unwrap();
         // accept connections and process them, spawning a new thread for each one
         for stream in listener.incoming() {
             match stream {
                 Ok(stream) => {
                     println!("New connection: {}", &stream.peer_addr().unwrap());  
-                    self.handle_client(stream);
+                    &self.handle_client(stream);
                 }
                 Err(e) => {
                     println!("Error: {}", e);
                     /* connection failed */
                 }
+            }
+            println!("Time spend: {}",&init_time.elapsed().as_secs());
+            if init_time.elapsed().as_secs() >= REFRESH_TIME {
+                println!("Check time spend");
+                init_time = Instant::now();
+                // &self.refresh_nodes_status();
             }
             self.display_network();
         }
@@ -535,6 +593,90 @@ impl Miner {
     pub fn add_to_wallets(&mut self, peer_id: u32, peer_addr: String) -> bool {
         self.wallets.insert((peer_id, peer_addr))
     }    
+    /// Function to refresh all nodes status and remove those are not accessible
+    pub fn refresh_nodes_status(&mut self){
+        let nodes: &HashSet<(u32,String)> = &self.network.to_owned();
+        for (id,addr) in nodes {
+            if id != &self.id {
+                &self.health_check(&addr, &id);
+            }
+            
+        }
+    }
+
+    /// health_check
+    /// ping the destination. If it doesn't respond ok or at time, removing the destination node from network
+    /// 
+    pub fn health_check(&mut self, destination: &String, id: &u32) -> Result<u8,&'static str>{
+        let result = &self.send_message(destination, &String::from(""), Flag::Check);  
+         
+        match result{
+            Ok(code) => { println!("Ok healthcheck: {}", code); }
+            Err(error) => {
+                println!("HealthCheck failed: {}", &error);
+                println!("Removing node: {},{}", &id, &destination);
+                &self.remove_from_network(*id, String::from(destination));
+                println!("node removed");
+            }
+
+        }
+        Ok(0)
+    }
+
+    /// Fun to check if the received block is valid
+    /// 
+    /// `* block` the received block
+    /// Return true if the block is valid, false else
+    pub fn check_block(&self, block: block::Block) -> bool {
+        // Verif hash 
+        let last_block: &block::Block = &self.blocks.last().unwrap();
+        println!("Last block: {:?}", last_block);
+        println!("Received block: {:?}", block);
+        if &last_block.index == &(block.index+1) && &last_block.payload == &block.payload && &last_block.hash == &last_block.prev_hash {
+            // hash
+            return true
+        } else {
+            return false
+        }
+    }
+
+    pub fn hash_block(self, ensembleTransactions: String) -> block::Block{
+       
+        let dernierBlock = self.blocks.last().unwrap();
+        let start = SystemTime::now();
+        let since_the_epoch = start
+        .duration_since(UNIX_EPOCH)
+        .expect("Time went backwards");
+        let timestampInMs = since_the_epoch.as_millis();
+        let nonce: u32 = 5;
+        
+        let indexString: String = (dernierBlock.index + 1).to_string();
+        let timestampString: String = timestampInMs.to_string();
+        let payloadString: String = self.payload.join("");
+        let nonceString: String = nonce.to_string();
+        let previousHash = &dernierBlock.hash;
+        let previousHashString: String = hex::encode(previousHash);
+
+
+        let mut to_hash= indexString + &payloadString;
+        to_hash = to_hash + &timestampString;
+        to_hash = to_hash + &nonceString;
+        to_hash = to_hash + &previousHashString;
+
+        let mut sha256 = Sha256::new();
+        sha256.update(to_hash);
+        let final_hash: String = format!("{:X}", sha256.finalize());
+        let final_hash_vec_u8 = final_hash.as_bytes();
+        return block::Block{
+            index:dernierBlock.index + 1, 
+            payload: ensembleTransactions, 
+            timestamp: timestampInMs, 
+            nonce:5, 
+            prev_hash: dernierBlock.hash.to_owned(), 
+            hash: final_hash_vec_u8.to_vec()
+        };
+    }
+
 }
 
 impl Debug for Miner {
