@@ -6,6 +6,7 @@ use std::collections::HashSet;
 use std::time::{Duration, Instant};
 use std::time::{SystemTime, UNIX_EPOCH};
 use sha2::{Sha256, Sha512, Digest};
+use log::{info, warn};
 
 #[path="./block.rs"]
 mod block;
@@ -430,20 +431,20 @@ impl Miner {
                         // Je regarde si je l'ai deja
                         if !&self.payload.contains(&message) {
                             self.payload.push(String::from(&message).to_owned());
-                            &self.broadcast_to_network(&message, Flag::Trasaction, sender_sockip.to_owned());
+                            &self.broadcast_to_network(&message, Flag::Transaction, sender_sockip.to_owned());
                         }
                         // Check payload size
                         if &self.payload.len() == &BLOCK_PAYLOAD_SIZE {
                             &self.broadcast_to_network(&self.payload.join(";").to_string(), Flag::MineTransaction, sender_sockip);
                             let payload = &self.payload.to_owned();
                             // TODO: Thread
-                            thread::scope(|s| {
-                                s.spawn(move |_| {
+                            // thread::scope(|s| {
+                            //     s.spawn(move |_| {
                                     // Connect to neighbor           
                                     // mine   
                                     &self.hash_block(String::from(payload.join(";")));
-                                });
-                            });
+                            //     });
+                            // });
                             self.payload = Vec::new();
                         }
                             
