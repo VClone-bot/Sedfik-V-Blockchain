@@ -83,6 +83,7 @@ pub fn hashset_from_string(hashset :String) -> HashSet<(u32, String)> {
 
 const TRAM_SIZE: usize = 100;
 const REFRESH_TIME: u64 = 15;
+const BLOCK_PAYLOAD_SIZE: usize = 5;
 /// Util
 /// Conctene u8 array
 /// * `first`
@@ -416,7 +417,9 @@ impl Miner {
                         // Check block
                         // if &self.check_block(block::Block::from(message)){
                             // forward block
-                            // &self.broadcast_to_network(message, Flag::Block,sender_sockip);  
+                            // &self.broadcast_to_network(message, Flag::Block,sender_sockip);
+                            // add to blockchain
+                            // Remove transaction already done
                         // } else {
                             // Invalid block
                         //}   
@@ -424,16 +427,29 @@ impl Miner {
                     Flag::Trasaction => {
                         println!("Transaction Flag received");
                         // Je regarde si je l'ai deja
-                        // if !&self.payload.contains(&message) {
-                        //     &self.payload.put(String::from(message).to_owned());
-                        //     &self.broadcast_to_network(&message, Flag::Trasaction, sender_sockip);
-                        // }
+                        if !&self.payload.contains(&message) {
+                            self.payload.push(String::from(&message).to_owned());
+                            &self.broadcast_to_network(&message, Flag::Trasaction, sender_sockip.to_owned());
+                        }
                         // Check payload size
-                        // if == BLOCK_PAYLOAD_SIZE
-                            // mine block
+                        if &self.payload.len() == &BLOCK_PAYLOAD_SIZE {
+                            &self.broadcast_to_network(&self.payload.join(";").to_string(), Flag::MineTransaction, sender_sockip);
+                            let payload = &self.payload.to_owned();
+                            // TODO: Thread
+                            thread::scope(|s| {
+                                s.spawn(move |_| {
+                                    // Connect to neighbor           
+                                    // mine   
+                                    &self.hash_block(String::from(payload.join(";")));
+                                });
+                            });
+                            self.payload = Vec::new();
+                        }
+                            
                     }
                     Flag::MineTransaction => {
                         // Verif if transaction are in payload
+
                         // If true
                             // 
                     }
@@ -639,7 +655,7 @@ impl Miner {
         }
     }
 
-    pub fn hash_block(self, ensembleTransactions: String) -> block::Block{
+    pub fn hash_block(&self, ensembleTransactions: String) -> block::Block{
        
         let dernierBlock = self.blocks.last().unwrap();
         let start = SystemTime::now();
