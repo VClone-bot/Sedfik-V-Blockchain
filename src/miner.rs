@@ -20,7 +20,9 @@ pub enum Flag {
     GiveID,
     BroadcastConnect,
     BroadcastDisconnect,
+    Transaction,
     RequireWalletID,
+    Check,
 }
 
 impl Flag {
@@ -33,7 +35,9 @@ impl Flag {
             4 => Flag::GiveID,
             5 => Flag::BroadcastConnect,
             6 => Flag::BroadcastDisconnect,
-            7 => Flag::RequireWalletID,
+            10 => Flag::Transaction,
+            11 => Flag::RequireWalletID,
+            12 => Flag::Check,
             _ => panic!("Unknown value: {}", value),
         }
     }

@@ -1,4 +1,4 @@
-use std::net::{TcpStream};
+use std::net::{TcpStream, TcpListener, Shutdown};
 use std::fmt::{self, Debug, Formatter};
 use std::io::{self, Write, Read};
 use crate::miner::Miner;
@@ -18,6 +18,7 @@ pub enum Flag {
     BroadcastDisconnect,
     Transaction,
     RequireWalletID,
+    Check,
 }
 
 impl Flag {
@@ -32,6 +33,7 @@ impl Flag {
             6 => Flag::BroadcastDisconnect,
             10 => Flag::Transaction,
             11 => Flag::RequireWalletID,
+            12 => Flag::Check,
             _ => panic!("Unknown value: {}", value),
         }
     }
@@ -76,8 +78,8 @@ pub fn encode_id(id: String) -> String {
     return format!("{:Y<10}", id);
 }
 
-pub fn decode_id(id: String) -> String {
-    return str::replace(&id, "Y", "");
+pub fn decode_message(message: String) -> String {
+    return str::replace(&message, "Y", "");
 }
 
 pub struct Wallet {
@@ -120,38 +122,89 @@ impl Wallet {
     }
 
     pub fn listen_for_user_input(&self) {
-        let mut stdin = io::stdin();
+        let stdin = io::stdin();
         loop {
             let mut buffer = String::new();
             println!("Ready for input...");
             stdin.read_line(&mut buffer);
-            let command = UserCommand::from_string(buffer);
+            let splitted: Vec<&str> = buffer.split(" ").collect();
+            let command = UserCommand::from_string(splitted[0].to_string());
 
             //On gère l'input de l'utilisateur
-            let response = self.handle_user_input(command);
-            println!("Response: {}\n", response);
-            if(response == "Exit") { 
-                break;
+            match command {
+                UserCommand::Send => {
+                    let target = splitted[1].to_string(); 
+                    let message = splitted[2].to_string();
+                    println!("Response: {}\n", self.handle_user_input(command, target.to_string(), message.to_string()));
+                }
+                UserCommand::Check => {
+                    println!("Response: {}\n", self.handle_user_input(command, "".to_string(), "".to_string()));
+                }
+                UserCommand::Exit => {
+                    println!("Response: {}\n", "Ok".to_string());
+                    break;
+                }
+                _ => { () }
             }
         }
 
         println!("Disconnecting Wallet");
-        return();
+        return ();
     }
 
-    pub fn handle_user_input(&self, command: UserCommand) -> String {
+    pub fn handle_user_input(&self, command: UserCommand, target: String, message: String) -> String {
         return match command {
             UserCommand::Send => {
-                "Sending".to_string()
+                println!("Sending message to Miner...");
+                let listener = TcpListener::bind(&self.socket).unwrap();
+                if let Ok(mut stream) = TcpStream::connect(&self.miner) {
+                    let m: &[u8] = &encode_message(Flag::Transaction, self.socket.to_string(), self.id.to_string(), message.to_string());
+                    match stream.write(m) {
+                        Ok(_) => { println!("Message {} sended to {}", message.to_string(), target.to_string()); }
+                        Err(e) => { println!("Error: {}", e); }
+                    }
+                    println!("Message sended");
+                }
+
+                for stream in listener.incoming() {
+                    match stream {
+                        Ok(stream) => {
+                            println!("Getting response from Miner");
+                            let response = self.handle_message(stream);
+                            return response;
+                        }
+                        Err(e) => {
+                            println!("Error: {}", e);
+                            return "Error".to_string();
+                        }
+                    }
+                }
+                return "".to_string();
             }
             UserCommand::Check => {
-                "Checking".to_string()
-            }
-            UserCommand::Exit => {
-                "Exit".to_string()
+                //let response = self.send_message(miner.to_string(), "".to_string(), Flag::Check);
+                return "Check ok".to_string();
             }
             _ => "Unknown command".to_string()
         }
+    }
+
+    pub fn handle_message(&self, mut stream: TcpStream) -> String {
+        let mut data = [0 as u8; 50];
+        match stream.read(&mut data) {
+            Ok(size) if size > 0 => {
+                let response_decoded = decode_message(std::str::from_utf8(&data[32..size]).unwrap().to_owned());
+                return response_decoded;
+            },
+            Ok(_) => { println!("No message received");},
+            Err(e) => {
+                println!("Error occured, closing connection: {}", e);
+                stream.shutdown(Shutdown::Both).unwrap();
+                return "Error".to_string();
+            }
+        }
+        {}
+        return "Error".to_string();
     }
 
     /// Function to send a message
