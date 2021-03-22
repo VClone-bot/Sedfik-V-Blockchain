@@ -424,6 +424,11 @@ impl Miner {
                     }
                     Flag::Transaction => {
                         println!("Transaction Flag received");
+                        let resp = "".to_string();
+                        match self.send_message(&sender_sockip, &resp, Flag::Ack) {
+                            Ok(_) => println!("Acknowledged"),
+                            Err(e) => println!("Err: {}", e),
+                        }
                         // Je regarde si je l'ai deja
                         // if !&self.payload.contains(&message) {
                         //     &self.payload.put(String::from(message).to_owned());

@@ -134,7 +134,7 @@ impl Wallet {
         loop {
             let mut buffer = String::new();
             println!("Ready for input...");
-            stdin.read_line(&mut buffer);
+            let _ = stdin.read_line(&mut buffer);
             let splitted: Vec<&str> = buffer.split(" ").collect();
             let command = UserCommand::from_string(splitted[0].to_string());
 
@@ -170,10 +170,21 @@ impl Wallet {
                         Ok(_) => { println!("Message {} sended to {}", message.to_string(), target.to_string()); }
                         Err(e) => { println!("Error: {}", e); }
                     }
-                    println!("Message sended");
                 }
 
-                
+                for stream in listener.incoming() {
+                    match stream {
+                        Ok(stream) => {
+                            println!("Getting response from Miner");
+                            let response = self.handle_message(stream);
+                            return response;
+                        }
+                        Err(e) => {
+                            println!("Error: {}", e);
+                            return "Error".to_string();
+                        }
+                    }
+                }
                 return "".to_string();
             }
             UserCommand::Check => {
@@ -191,15 +202,15 @@ impl Wallet {
                 let response_decoded = decode_message(std::str::from_utf8(&data[32..size]).unwrap().to_owned());
                 return response_decoded;
             },
-            Ok(_) => { println!("No message received");},
+            Ok(_) => { 
+                return "No message received".to_string();
+            },
             Err(e) => {
                 println!("Error occured, closing connection: {}", e);
                 stream.shutdown(Shutdown::Both).unwrap();
                 return "Error".to_string();
             }
         }
-        {}
-        return "Error".to_string();
     }
 
     /// Function to send a message
