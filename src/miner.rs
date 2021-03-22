@@ -184,7 +184,9 @@ pub fn handle_id(mut stream: TcpStream) -> u32 {
     let mut data = [0 as u8; 50];
     match stream.read(&mut data) {
         Ok(size) if size > 0 => {
-            let id_as_str_decoded = decode_id(std::str::from_utf8(&data[32..size]).unwrap().to_owned());
+            let tuple : (Flag, String, String, String) = decode_message(&data);
+            let id_as_str_decoded = decode_id(std::str::from_utf8(tuple.2.as_bytes()).unwrap().to_owned());
+            print!("tuple:{},{},{},{}",&data[0],tuple.1,tuple.2,tuple.3);
             let id = 3;//id_as_str_decoded.parse::<u32>().unwrap();
             return id;
         },
