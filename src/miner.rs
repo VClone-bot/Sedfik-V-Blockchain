@@ -119,7 +119,7 @@ pub fn encode_id(id: String) -> String {
 }
 
 /// Remove the padding from the ID field
-pub fn decode_message(message: String) -> String {
+pub fn decode_id(message: String) -> String {
     return str::replace(&message, "Y", "");
 }
 
