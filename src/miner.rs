@@ -759,7 +759,7 @@ impl Miner {
             _ => {
                 // Genesis
                 index_ = 0;
-                previous_hash_ = hex::encode("");
+                previous_hash_ = hex::encode("first_block");
             }
         } 
 

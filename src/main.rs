@@ -33,6 +33,13 @@ fn main() {
                 .value_name("HOST:PORT")
                 .takes_value(true)
                 .help("Join wallet to a specified miner on host:port"))
+        .subcommand(SubCommand::with_name("test")
+                .about("controls testing features")
+                .version("1.3")
+                .author("Someone E. <someone_else@other.com>")
+                .arg(Arg::with_name("debug")
+                    .short("d")
+                    .help("print debug information verbosely")))
         .get_matches();
 
 
