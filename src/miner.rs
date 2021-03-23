@@ -7,7 +7,7 @@ use std::collections::HashSet;
 use std::time::{Duration, Instant};
 use std::time::{SystemTime, UNIX_EPOCH};
 use sha2::{Sha256, Sha512, Digest};
-use log::{info, warn};
+//use log::{info, warn};
 use std::convert::TryFrom;
 use std::sync::{Mutex, Arc};
 use std::str::FromStr;

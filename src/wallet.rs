@@ -4,8 +4,9 @@ use std::io::{self, Write, Read};
 use crate::miner::Miner;
 use std::collections::HashSet;
 use std::process::Command;
-//use crossbeam_utils::thread;
 
+/// Used for signaling what kind of requests we are sending when networking
+/// 
 #[derive(Copy, Clone)]
 pub enum Flag {
     /// Ok -> Network
@@ -25,7 +26,11 @@ pub enum Flag {
     RequireWalletID,
 }
 
+
 impl Flag {
+    /// Simple function to convert a integer to a Flag
+    /// Used when receiving/sending a message as primary types are easier to pass than objects
+    /// 
     fn from_u8(value: u8) -> Flag {
         match value {
             0 => Flag::Ok,
@@ -47,6 +52,8 @@ impl Flag {
     }
 }
 
+/// Used to represent the commands that the user can send to the wallet via the standard input
+/// 
 #[derive(Copy, Clone)]
 pub enum UserCommand {
     Send,
@@ -54,6 +61,8 @@ pub enum UserCommand {
     Exit,
 }
 
+/// This function converts the String text passed in the console to UserCommands
+/// 
 impl UserCommand {
     fn from_string(value: String) -> UserCommand {
         let v = value.trim();
@@ -67,35 +76,47 @@ impl UserCommand {
     }
 }
 
+
 pub fn concat_u8(first: &[u8], second: &[u8]) -> Vec<u8> {
     [first, second].concat()
 }
 
 
-// Ajoute du padding sockip
+/// Add padding to the socket ip to allow fixed size data structure when sending data
 pub fn encode_sockip(sockip: String) -> String {
     return format!("{:X<21}", sockip);
 }
 
-// Retire le padding au sockip
+/// Remove the padding from the socket ip
 pub fn decode_sockip(sockip: String) -> String {
     return str::replace(&sockip, "X", "");
 }
 
+/// Add padding to the ID to allow fixed sized data structure when sending an ID
 pub fn encode_id(id: String) -> String {
     return format!("{:Y<10}", id);
 }
 
+/// Remove the padding from the ID field
 pub fn decode_message(message: String) -> String {
     return str::replace(&message, "Y", "");
 }
 
+/// This struct represent the wallets
+/// *`id` - an integer than should be unique to each wallet within a miner's wallet list
+/// *`miner` - the IP address of the miner to which the wallet is binded
+/// *`socket` - the IP address on which the wallet listens for incoming messages
 pub struct Wallet {
     pub id: u32, // Our ID
     pub miner: String,
     pub socket: String,
 }
 
+/// This function is used to send a message to another entity on the network
+/// *`flag` - a Flag which represents what kind of request/message we are sending
+/// *`sockip` - the IP address of the recipient of the message
+/// *`id` - only used when sending an ID value, otherwise it should be left blank
+/// *`msg` - the message sended to the recipient
 pub fn encode_message(flag : Flag, sockip : String, id : String, msg : String) -> Vec<u8>{
     println!("\nEncoding message");
     let flag_convert: &[u8] = &[flag as u8];
@@ -107,6 +128,9 @@ pub fn encode_message(flag : Flag, sockip : String, id : String, msg : String) -
     concat_u8(flag_convert, &concat_u8(sockip_convert.as_bytes(), &concat_u8(id_convert.as_bytes(), msg_convert)))
 }
 
+/// This function creates a wallet and make it listen for the user input
+/// *`socket` - the IP address on which the wallet is listening
+/// *`miner` - the IP address of the miner it is binded to
 pub fn create_wallet(socket: String, miner: String) {
     println!("Wallet creation...");
     //Ask our miner what our ID is and create the wallet with given id
@@ -120,7 +144,10 @@ pub fn create_wallet(socket: String, miner: String) {
 impl Wallet {
 
     /// CTOR
-    /// `miner` - the miner to which that wallet is tied04
+    /// *`socket` - the IP address where the wallet listens
+    /// *`miner` - the IP address miner to which that wallet is tied
+    /// *`id` - the unique ID that must be assigned to this wallet
+    /// Returns a new wallet with parameters initialized as given
     pub fn new(socket: String, miner: String, id: u32) -> Self {
         return Wallet {
             socket: socket,
@@ -129,6 +156,8 @@ impl Wallet {
         }
     }
 
+    /// This function allows our wallet to listen to the commands given by the user on std input
+    /// It checks for validity of the input, and act accordingly
     pub fn listen_for_user_input(&self) {
         let stdin = io::stdin();
         loop {
@@ -159,6 +188,7 @@ impl Wallet {
         return ();
     }
 
+    /// Performs the action which the user gave as input
     pub fn handle_user_input(&self, command: UserCommand, target: String, message: String) -> String {
         return match command {
             UserCommand::Send => {
@@ -184,6 +214,8 @@ impl Wallet {
         }
     }
 
+    /// This handles incoming message, by decoding them and transforming them into usable data
+    /// *`stream` - is a TcpStream instance containing the bytes that we received
     pub fn handle_message(&self, mut stream: TcpStream) -> String {
         let mut data = [0 as u8; 50];
         match stream.read(&mut data) {
@@ -202,7 +234,7 @@ impl Wallet {
         return "Error".to_string();
     }
 
-    /// Function to send a message
+    /// Function to send a message to another entity on the network
     /// * `stream` - Tcp Stream.
     /// * `message` - The message to send.
     pub fn send_message(&self, destination: &String, message: &String, flag: Flag) -> Result<u8, &'static str> {
