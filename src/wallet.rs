@@ -76,7 +76,16 @@ impl UserCommand {
     }
 }
 
-
+/// Util
+/// Concat u8 array
+/// * `first`
+/// * `second`
+/// Example 
+/// ```rust 
+/// let first: &[u8] = String::from("Hello, ").as_bytes();
+/// let second: &[u8] = String::from("World!").as_bytes();
+/// asserteq!("Hello, World!",concat_u8(&first,&second));
+/// ```
 pub fn concat_u8(first: &[u8], second: &[u8]) -> Vec<u8> {
     [first, second].concat()
 }

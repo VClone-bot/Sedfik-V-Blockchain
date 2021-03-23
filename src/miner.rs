@@ -89,7 +89,7 @@ const TRAM_SIZE: usize = 100;
 const REFRESH_TIME: u64 = 15;
 const BLOCK_PAYLOAD_SIZE: usize = 5;
 /// Util
-/// Conctene u8 array
+/// Concat u8 array
 /// * `first`
 /// * `second`
 /// Example 
@@ -103,24 +103,25 @@ pub fn concat_u8(first: &[u8], second: &[u8]) -> Vec<u8> {
 }
 
 
-// Ajoute du padding sockip
+/// Add padding to the socket ip to allow fixed size data structure when sending data
 pub fn encode_sockip(sockip: String) -> String {
     return format!("{:X<21}", sockip);
 }
 
-// Retire le padding au sockip
+/// Remove the padding from the socket ip
 pub fn decode_sockip(sockip: String) -> String {
     return str::replace(&sockip, "X", "");
 }
 
+/// Add padding to the ID to allow fixed sized data structure when sending an ID
 pub fn encode_id(id: String) -> String {
     return format!("{:Y<10}", id);
 }
 
-pub fn decode_id(id: String) -> String {
-    return str::replace(&id, "Y", "");
+/// Remove the padding from the ID field
+pub fn decode_message(message: String) -> String {
+    return str::replace(&message, "Y", "");
 }
-
 
 pub fn decode_message(msg : &[u8]) -> (Flag, String, String, String){
     println!("SSSDL111 .{:?}.", msg);
@@ -143,6 +144,10 @@ pub fn encode_message(flag : Flag, sockip : String, id : String, msg : String) -
     concat_u8(flag_convert, &concat_u8(sockip_convert.as_bytes(), &concat_u8(id_convert.as_bytes(), msg_convert)))
 }
 
+/// Used to create a new miner, then make it listen for incoming transactions
+/// *`miner_type` - a char representing what kind of miner we need to create ('c' if we are creating a network, 'j' if we are joining an existing network)
+/// *`socket` - the IP address on which the miner will listen for transactions
+/// *`destination` - the IP address of a miner in the network we are joining, if `miner_type` == 'j'
 pub fn create_miner(miner_type: char, socket: String, destination: String) {
     println!("Miner creation...");
     let mut miner;
@@ -165,6 +170,9 @@ pub fn create_miner(miner_type: char, socket: String, destination: String) {
     miner.listen();
 }
 
+/// This function is used when a new miner is joining an existing network, and needs a unique ID to be assigned to it
+/// *`socket` - the miner whom we are joining
+/// *`destination` - the joining miner IP address
 pub fn ask_for_id(socket: &String, destination: &String) -> u32 {
     println!("Asking {} for id...", &destination);
     let listener = TcpListener::bind(&socket).unwrap();
@@ -196,6 +204,8 @@ pub fn ask_for_id(socket: &String, destination: &String) -> u32 {
     return id;
 } 
 
+/// Used by a joining miner to decode the unique ID he was given
+/// *`stream` - a TCPStream instance of bytes which contains the ID
 pub fn handle_id(mut stream: TcpStream) -> u32 {
     let mut data = [0 as u8; 50];
     match stream.read(&mut data) {
@@ -215,6 +225,14 @@ pub fn handle_id(mut stream: TcpStream) -> u32 {
     0
 }
 
+/// This struct is used to represent a Miner in our Blockchain Network
+/// *`id` - the ID of our Miner, should be unique within the network
+/// *`network` - a HashSet containing the IDs and IP addresses of every Miner inside the network
+/// *`blocks` - a Vector containing the Blockchain
+/// *`sockip` - the IP address on which our Miner will listen for incoming transactions
+/// *`wallets` - a HashSet containing the IDs and IP addresses of every wallets binded to it
+/// *`payload` - TBD
+/// *`current_block_id` - TBD
 pub struct Miner {
     pub id: u32, // Our ID
     pub network: HashSet<(u32, String)>, // The IDs and adresses of every member of the network, always unique
@@ -229,7 +247,7 @@ impl Miner {
 
     /// CONSTRUCTOR
     /// `socket` - an ip:port string representing where is the Miner listening
-    /// returns a new Miner with a TcpListener that listens to the given ip:port
+    /// Returns a new Miner with a TcpListener that listens to the given ip:port
     pub fn new (id: u32, socket: String) -> Self {
         return Miner {
             id: id,
@@ -242,11 +260,12 @@ impl Miner {
         }        
     }
 
+    /// Getter for the `id` attribute of a Miner
     pub fn get_id(&self) -> u32 {
         self.id
     }
 
-
+    /// Function used to print the `network` attribute of a Miner
     pub fn display_network(&self) {
         println!("Current network:");
         for miner in &self.network {
@@ -291,6 +310,10 @@ impl Miner {
         }
     }
 
+    /// This function is used by a Miner to Broadcast an incoming message to the whole network
+    /// *`message` - the message to be broadcasted
+    /// *`flag` - the flag associated with the message
+    /// *`sender` - the IP address of the miner which sended the original message
     pub fn broadcast_to_network(&self, message: &String, flag: Flag, sender: String) {
         println!("Broadcasting network changes");
         for(_, peer_addr) in &self.network {
@@ -323,6 +346,8 @@ impl Miner {
         }
     }
 
+    /// Used by an existing Miner when a new miner joins the network and asks for it's unique ID
+    /// Returns an integer which will be assigned as the joining Miner's ID
     pub fn retrieve_next_id(&self) -> u32 {
         let mut max_id = &self.id;
         for (id, _) in &self.network {
@@ -334,6 +359,8 @@ impl Miner {
         return (max_id+1).to_owned();
     }
 
+    /// Used by an existing Miner when a new wallet is binded to it and asks for it's unique ID
+    /// Returns an integer which will be assigned as the new wallet's ID
     pub fn retrieve_next_wallet_id(&self) -> u32 {
         let mut max_id = 0;
         for (id, _) in &self.wallets {
@@ -345,6 +372,9 @@ impl Miner {
         return (max_id+1).to_owned();
     }
 
+    /// This function handles the incoming requests/messages sended by other entities
+    /// *`stream` - a TCPStream instance which contains the data that was received
+    /// The function decodes the incoming message, then act accordingly
     pub fn handle_client(&mut self, mut stream: TcpStream) {
         let mut data = [0 as u8; TRAM_SIZE];
         while match stream.read(&mut data) { 
@@ -369,6 +399,7 @@ impl Miner {
                 // select appropriate response based on the flag, convert the u8 number to flag
                 match flag {
                     Flag::Connect => {
+                        // When a miner connects to the network, add him to our HashSet then broadcast the connection message to the network
                         println!("Connect Flag received");
                         //let destination = format!("{}:{}",&stream.local_addr().unwrap().ip().to_string(),&stream.local_addr().unwrap().port().to_string());
                         let destination = &sender_sockip;
@@ -384,6 +415,7 @@ impl Miner {
                         self.add_to_network(sender_id, sender_sockip);
                     }
                     Flag::Disconnect => {
+                        // If a miner disconnects from the network, remove him from our HashSet and broadcast the disconnection to the Network
                         println!("Disconnect Flag received");
                         let sender_id = sender_id_as_str.parse::<u32>().unwrap();
                         self.remove_from_network(sender_id, sender_sockip.to_owned());
@@ -577,11 +609,14 @@ impl Miner {
         drop(listener);
     }
 
+    /// Used by Miners to ask the Miner to which it is connecting to give us our ID
+    /// *`socket` - our IP address
+    /// *`destination` - the IP address of the Miner we are asking for an ID
     pub fn ask_for_id(socket: &String, destination: &String) -> u32 {
         println!("Asking {} for id...", &destination);
         let listener = TcpListener::bind(&socket).unwrap();
         let mut id: u32 = 0;
-    
+        // Ask the ID
         if let Ok(mut stream) = TcpStream::connect(&destination) {
             let m: &[u8] = &encode_message(Flag::RequireID, socket.to_string(), "".to_string(), "".to_string());
             match stream.write(m) {
@@ -590,7 +625,7 @@ impl Miner {
             }
             println!("Message sended");
         }
-    
+        // Handle the response
         for stream in listener.incoming() {
             match stream {
                 Ok(stream) => {
@@ -608,12 +643,14 @@ impl Miner {
         return id;
     } 
 
-    /// Function to give a connecting wallet its id
+    /// Used by wallets to ask the Miner to which it is connecting to give us our ID
+    /// *`socket` - our IP address
+    /// *`destination` - the IP address of the Miner we are asking for an ID
     pub fn ask_miner_for_wallet_id(socket: &String, miner: &String) -> u32 {
         println!("Asking {} for wallet ID", &miner);
         let listener = TcpListener::bind(&socket).unwrap();
         let mut id: u32 = 0;
-
+        // Ask the ID
         if let Ok(mut stream) = TcpStream::connect(&miner) {
             let m: &[u8] = &encode_message(Flag::RequireWalletID, socket.to_string(), "".to_string(), "".to_string());
             match stream.write(m) {
@@ -622,7 +659,7 @@ impl Miner {
             }
             println!("Message sended, wallet added to miner's wallet list");
         }
-
+        // Handle the response
         for stream in listener.incoming() {
             match stream {
                 Ok(stream) => {
@@ -640,6 +677,9 @@ impl Miner {
         return id;
     }
 
+    /// Simple function to add a new wallet to our Miner's wallet list
+    /// *`peer_id` - the ID of the new wallet
+    /// *`peer_addr` - the IP address of the new wallet
     pub fn add_to_wallets(&mut self, peer_id: u32, peer_addr: String) -> bool {
         self.wallets.insert((peer_id, peer_addr))
     }    
@@ -673,9 +713,9 @@ impl Miner {
         Ok(0)
     }
 
-    /// Fun to check if the received block is valid
+    /// Function to check if the received block is valid
     /// 
-    /// `* block` the received block
+    /// *`block` the received block
     /// Return true if the block is valid, false else
     pub fn check_block(&self, block: block::Block) -> bool {
         // Verif hash 
