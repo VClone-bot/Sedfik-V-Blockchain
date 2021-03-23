@@ -85,7 +85,7 @@ pub fn hashset_from_string(hashset :String) -> HashSet<(u32, String)> {
     return res.to_owned();
 }
 
-const TRAM_SIZE: usize = 100;
+const TRAM_SIZE: usize = 500;
 const REFRESH_TIME: u64 = 15;
 const BLOCK_PAYLOAD_SIZE: usize = 5;
 /// Util
@@ -488,6 +488,7 @@ impl Miner {
                             if self.blocks.len() as u32 == mined_block.index {
                                 &self.blocks.push(block::Block::from_str(&mined_block.to_string()).unwrap());
                                 &self.broadcast_to_network(&mined_block.to_string(), Flag::Block, sender_sockip.to_owned());
+                                self.payload = Vec::new();
                                 println!("Chain: {:?}", &self.blocks);
                             }
                             // TODO: Thread
@@ -759,7 +760,11 @@ impl Miner {
             _ => {
                 // Genesis
                 index_ = 0;
-                previous_hash_ = hex::encode("first_block");
+                let mut sha256 = Sha256::new();
+                sha256.update("first_block");
+                let first_hash: String = format!("{:X}", sha256.finalize());
+                println!("first_hash: {}",first_hash);
+                previous_hash_ = first_hash;
             }
         } 
 
@@ -768,15 +773,15 @@ impl Miner {
 
         let mut sha256 = Sha256::new();
         sha256.update(to_hash);
-        let final_hash: String = format!("{:X}", sha256.finalize());
-        let final_hash_vec_u8 = final_hash.as_bytes();
+        let hash = sha256.finalize();
+        println!("new_hash: {:X}",hash);
         return block::Block{
             index: index_, 
             payload: payload_, 
             timestamp: timestamp_, 
             nonce: nonce_, 
-            prev_hash: previous_hash_.as_bytes().iter().cloned().collect(), 
-            hash: final_hash_vec_u8.to_vec()
+            prev_hash: previous_hash_.as_bytes().to_vec(), 
+            hash: hash.to_vec()
         };
     }
 

@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::fmt::{self, Debug, Formatter};
 use std::str::FromStr;
 use std::num::ParseIntError;
+use std::fmt::UpperHex;
 
 /** Bloc: composants de la BlockChain
  * Composants d'un bloc
@@ -43,11 +44,11 @@ impl fmt::Display for Block {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "id:{};prev_hash:{};timestamp:{};payload:{};nonce:{};hash:{}",
             &self.index,
-            &hex::encode(&self.prev_hash),
+            String::from_utf8_lossy(&self.prev_hash),
             &self.timestamp,
             &self.payload,
             &self.nonce,
-            &hex::encode(&self.hash),
+            String::from_utf8_lossy(&self.hash),
         )
     }
 }
@@ -57,11 +58,11 @@ impl Debug for Block {
     fn fmt (&self, f: &mut Formatter) -> fmt::Result {
         write!(f, "id:{};prev_hash:{};timestamp:{};payload:{};nonce:{};hash:{}",
             &self.index,
-            &hex::encode(&self.prev_hash),
+            String::from_utf8_lossy(&self.prev_hash),
             &self.timestamp,
             &self.payload,
             &self.nonce,
-            &hex::encode(&self.hash),
+            String::from_utf8_lossy(&self.hash),
         )
     }
 }
@@ -71,7 +72,6 @@ impl FromStr for Block {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         /// Allows you to create a `Block` from a `String`
-
         let block: HashMap<String, String> = s.split(';')
         .map(|kv| kv.split(':').collect::<Vec<&str>>())
         .map(|vec| {
