@@ -1,3 +1,5 @@
+#![doc(html_root_url = "https://hoverbear.github.io/travis-demo/")]
+
 use std::str::FromStr;
 use std::env;
 use clap::{Arg, App, SubCommand};

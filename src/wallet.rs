@@ -77,18 +77,10 @@ impl UserCommand {
 }
 
 /// Util
-<<<<<<< HEAD
 /// Concat u8 array
 /// * `first`
 /// * `second`
 /// Example 
-=======
-/// Conctene u8 array
-/// * `first`
-/// * `second`
-/// 
-/// # Example 
->>>>>>> 1986dfdf9a2c556f3f1734efe48d2b9e55770a66
 /// ```rust 
 /// let first: &[u8] = String::from("Hello, ").as_bytes();
 /// let second: &[u8] = String::from("World!").as_bytes();
@@ -115,7 +107,7 @@ pub fn encode_id(id: String) -> String {
 }
 
 /// Remove the padding from the ID field
-pub fn decode_message(message: String) -> String {
+pub fn decode_id_response(message: String) -> String {
     return str::replace(&message, "Y", "");
 }
 
@@ -237,7 +229,7 @@ impl Wallet {
         let mut data = [0 as u8; 50];
         match stream.read(&mut data) {
             Ok(size) if size > 0 => {
-                let response_decoded = decode_message(std::str::from_utf8(&data[32..size]).unwrap().to_owned());
+                let response_decoded = decode_id_response(std::str::from_utf8(&data[32..size]).unwrap().to_owned());
                 return response_decoded;
             },
             Ok(_) => { println!("No message received");},
