@@ -123,6 +123,7 @@ pub fn decode_message(message: String) -> String {
     return str::replace(&message, "Y", "");
 }
 
+/// Decode the message received
 pub fn decode_message(msg : &[u8]) -> (Flag, String, String, String){
     println!("SSSDL111 .{:?}.", msg);
     let flag = Flag::from_u8(msg[0]); // get the flag
@@ -133,6 +134,7 @@ pub fn decode_message(msg : &[u8]) -> (Flag, String, String, String){
     (flag, decode_sockip(sockip.to_string()), decode_id(id_encoded.to_string()), msg.to_string())
 }
 
+/// Encode the sended message
 pub fn encode_message(flag : Flag, sockip : String, id : String, msg : String) -> Vec<u8>{
     println!("\nEncoding message");
     let flag_convert: &[u8] = &[flag as u8];
