@@ -61,6 +61,18 @@ impl Flag {
 /// Pimped serialized hashset 
 /// 
 /// *`set` The hashSet to serialized 
+/// # Examples
+///
+/// ```rust
+/// use std::collections::HashSet;
+/// 
+/// let hashset : HashSet<(u32,String)>;
+/// 
+/// hashset.insert((1,"localhost".to_string()));
+/// hashset.insert((2,"127.0.0.1".to_string()));
+/// 
+/// assert_eq!(hashset_to_string(hashset), String::from("1,localhost;2,127.0.0.1"));
+/// ```
 pub fn hashset_to_string(set: &HashSet<(u32, String)>) -> String {
     let mut res = vec![];
     for (id, addr) in set {
@@ -72,7 +84,20 @@ pub fn hashset_to_string(set: &HashSet<(u32, String)>) -> String {
 
 /// Pimped deserialized hashset
 /// 
+/// # Examples
+///
+/// ```rust
+/// use std::collections::HashSet;
 /// 
+/// let hashset_string : String = String::from("1,localhost;2,127.0.0.1");
+///  
+/// let hashset : HashSet<(u32,String)>;
+/// 
+/// hashset.insert((1,"localhost".to_string()));
+/// hashset.insert((2,"127.0.0.1".to_string()));
+/// 
+/// assert_eq!(hashset_string,hashset);
+/// ```
 pub fn hashset_from_string(hashset :String) -> HashSet<(u32, String)> {
     let mut res = HashSet::<(u32,String)>::new();
     let splitted: Vec<&str> = hashset.split(";").collect();
@@ -97,7 +122,7 @@ const MINING_DIFFICULTY: usize = 6;
 /// Concat u8 array
 /// * `first`
 /// * `second`
-/// Example 
+/// # Example 
 /// ```rust 
 /// let first: &[u8] = String::from("Hello, ").as_bytes();
 /// let second: &[u8] = String::from("World!").as_bytes();
