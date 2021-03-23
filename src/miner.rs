@@ -150,7 +150,8 @@ pub fn encode_id(id: String) -> String {
 
 /// Remove the padding from the ID field
 pub fn decode_id(message: String) -> String {
-    return str::replace(&message, "Y", "");
+    let id = str::replace(&message, "Y", "");
+    return id;
 }
 
 /// Decode the message received
@@ -243,8 +244,8 @@ pub fn handle_id(mut stream: TcpStream) -> u32 {
     match stream.read(&mut data) {
         Ok(size) if size > 0 => {
             let tuple : (Flag, String, String, String) = decode_message(&data);
-            println!("Received id:{}",&tuple.2);
-            let id_as_str_decoded = decode_id(std::str::from_utf8(tuple.2.as_bytes()).unwrap().to_owned());
+            let id_as_str : String = tuple.3.trim_matches(|c| c == char::from(0) || c == '\n').to_string();
+            let id_as_str_decoded = decode_id(std::str::from_utf8(id_as_str.as_bytes()).unwrap().to_owned());
             let id = id_as_str_decoded.parse::<u32>().unwrap();
             return id;
         },
@@ -314,7 +315,6 @@ impl Miner {
             Ok(_) => println!("Join done."),
             Err(e) => println!("Err: {}", e),
         }
-        
     }
 
     
@@ -327,11 +327,11 @@ impl Miner {
         match TcpStream::connect(&destination) {
             Ok(mut stream) => {
                 println!("Connection established.");
-                let m: &[u8] = &encode_message(flag, self.sockip.to_string(),self.id.to_string(), message.to_string());
+                let m: &[u8] = &encode_message(flag, self.sockip.to_string(), self.id.to_string(), message.to_string());
                 println!("Byte message: {:?}",&m);
                 match stream.write(m) {
                     Ok(_) => println!("Message writen in buffer"),
-                    Err(e) => println!("Error during writing: {}",e.to_string()),
+                    Err(e) => println!("Error during writing: {}", e.to_string()),
                 }
                 println!("Message sended");
                 return Ok(0);
@@ -388,8 +388,8 @@ impl Miner {
                 max_id = id;
             }
         }
-        println!("found id is {}", max_id);
-        return (max_id+1).to_owned();
+        let new_id = max_id+1;
+        return new_id.to_owned();
     }
 
     /// Used by an existing Miner when a new wallet is binded to it and asks for it's unique ID
