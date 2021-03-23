@@ -1,4 +1,4 @@
-#![doc(html_root_url = "https://hoverbear.github.io/travis-demo/")]
+#![doc(html_root_url = "https://github.com/VClone-bot/Sedfik-V-Blockchain/blob/gh-pages/blockchain/index.html")]
 
 use std::str::FromStr;
 use std::env;
