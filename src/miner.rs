@@ -84,10 +84,15 @@ pub fn hashset_from_string(hashset :String) -> HashSet<(u32, String)> {
     }
     return res.to_owned();
 }
-
-const TRAM_SIZE: usize = 100;
+/// Size of a message
+const TRAM_SIZE: usize = 500; 
+/// Time in sec for nodes healthcheck
 const REFRESH_TIME: u64 = 15;
+/// Size of the block payload
 const BLOCK_PAYLOAD_SIZE: usize = 5;
+/// Difficulty of mining
+const MINING_DIFFICULTY: usize = 6;
+
 /// Util
 /// Concat u8 array
 /// * `first`
@@ -210,7 +215,7 @@ pub fn ask_for_id(socket: &String, destination: &String) -> u32 {
 /// Used by a joining miner to decode the unique ID he was given
 /// *`stream` - a TCPStream instance of bytes which contains the ID
 pub fn handle_id(mut stream: TcpStream) -> u32 {
-    let mut data = [0 as u8; 50];
+    let mut data = [0 as u8; TRAM_SIZE];
     match stream.read(&mut data) {
         Ok(size) if size > 0 => {
             let tuple : (Flag, String, String, String) = decode_message(&data);
@@ -456,6 +461,7 @@ impl Miner {
                     }
                     Flag::Block => {
                         println!("Block received");
+                        self.refresh_nodes_status();
                         // Check block
                         // if &self.check_block(block::Block::from(message)){
                             // forward block
@@ -468,6 +474,7 @@ impl Miner {
                     }
                     Flag::Transaction => {
                         println!("Transaction Flag received");
+                        self.refresh_nodes_status();
                         // Je regarde si je l'ai deja
                         let transaction : String = message.trim_matches(|c| c == char::from(0) || c == '\n').to_string();
                         
@@ -689,12 +696,13 @@ impl Miner {
     }    
     /// Function to refresh all nodes status and remove those are not accessible
     pub fn refresh_nodes_status(&mut self){
+        println!("Refresh node status");
         let nodes: &HashSet<(u32,String)> = &self.network.to_owned();
         for (id,addr) in nodes {
             if id != &self.id {
+                println!("\n node: {}",&id);
                 &self.health_check(&addr, &id);
             }
-            
         }
     }
 
@@ -734,9 +742,11 @@ impl Miner {
         }
     }
 
+    /// Function to mine block
+    /// *`transaction` List of transactions to mine
+    /// *`MINING_DIFFICULTY` use 
+    /// *Return* the mined block
     pub fn hash_block(&self, transactions: String) -> block::Block{
-         
-      
 
         let start = SystemTime::now();
         let since_the_epoch = start
@@ -763,26 +773,43 @@ impl Miner {
                 index_ = 0;
                 let mut sha256 = Sha256::new();
                 sha256.update("first_block");
-                let first_hash: String = format!("{:X}", sha256.finalize());
+                let first_hash: String = format!("{:x}", sha256.finalize());
                 println!("first_hash: {}",first_hash);
                 previous_hash_ = first_hash;
             }
         } 
-
-        let to_hash = index_.to_string() + &payload_ + &timestamp_.to_string() + &nonce_.to_string() + &previous_hash_;
-
-
-        let mut sha256 = Sha256::new();
-        sha256.update(to_hash);
-        let hash = sha256.finalize();
-        println!("new_hash: {:X}",hash);
+        
+        let mut to_hash;
+        let mut sha256;
+        let mut hash: String = String::from("");
+        for nonce_i in 0..(u64::max_value()) {
+            to_hash = index_.to_string() + &payload_ + &timestamp_.to_string() + &nonce_i.to_string() + &previous_hash_;
+            
+            sha256 = Sha256::new();
+            sha256.update(to_hash);
+            hash = format!("{:x}", sha256.finalize());
+            
+            
+            if hash.starts_with(&"0".repeat(MINING_DIFFICULTY)) {
+                println!("new_hash: {}",&hash);
+                return block::Block{
+                    index: index_, 
+                    payload: payload_, 
+                    timestamp: timestamp_, 
+                    nonce: nonce_i, 
+                    prev_hash: previous_hash_.as_bytes().to_vec(), 
+                    hash: hash.as_bytes().to_vec()
+                };
+            }
+        }
+        /// Dead code, normaly upside code find hash before u64::max_value iteration.
         return block::Block{
             index: index_, 
             payload: payload_, 
             timestamp: timestamp_, 
             nonce: nonce_, 
             prev_hash: previous_hash_.as_bytes().to_vec(), 
-            hash: hash.to_vec()
+            hash: hash.as_bytes().to_vec()
         };
     }
 
