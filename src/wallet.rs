@@ -77,10 +77,18 @@ impl UserCommand {
 }
 
 /// Util
+<<<<<<< HEAD
 /// Concat u8 array
 /// * `first`
 /// * `second`
 /// Example 
+=======
+/// Conctene u8 array
+/// * `first`
+/// * `second`
+/// 
+/// # Example 
+>>>>>>> 1986dfdf9a2c556f3f1734efe48d2b9e55770a66
 /// ```rust 
 /// let first: &[u8] = String::from("Hello, ").as_bytes();
 /// let second: &[u8] = String::from("World!").as_bytes();
