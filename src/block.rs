@@ -3,6 +3,7 @@ use std::fmt::{self, Debug, Formatter};
 use std::str::FromStr;
 use std::num::ParseIntError;
 use std::fmt::UpperHex;
+use bincode;
 
 /** Bloc: composants de la BlockChain
  * Composants d'un bloc
@@ -86,5 +87,11 @@ impl FromStr for Block {
             prev_hash: block.get("prev_hash").unwrap().as_bytes().to_vec(),
             hash:  block.get("hash").unwrap().as_bytes().to_vec(),
      })
+    }
+}
+
+impl AsRef<[u8]> for Block {
+    fn as_ref(&self) -> &[u8] {
+		&self.hash
     }
 }

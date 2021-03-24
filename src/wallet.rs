@@ -2,8 +2,14 @@ use std::net::{TcpStream, TcpListener, Shutdown};
 use std::fmt::{self, Debug, Formatter};
 use std::io::{self, Write, Read};
 use crate::miner::Miner;
+use ring::digest::{Algorithm};
 use std::collections::HashSet;
 use std::process::Command;
+use crate::block::Block;
+use std::str::FromStr;
+use merkle;
+
+#[path="./block.rs"] mod block;
 
 /// Used for signaling what kind of requests we are sending when networking
 /// 
@@ -24,6 +30,8 @@ pub enum Flag {
     MineTransaction,
     OkMineTransaction,
     RequireWalletID,
+    RequireBlockchain,
+    SendBlockchain,
 }
 
 
@@ -47,6 +55,8 @@ impl Flag {
             11 => Flag::MineTransaction,
             12 => Flag::OkMineTransaction,
             13 => Flag::RequireWalletID,
+            14 => Flag::RequireBlockchain,
+            15 => Flag::SendBlockchain,
             _ => panic!("Unknown value: {}", value),
         }
     }
@@ -58,6 +68,7 @@ impl Flag {
 pub enum UserCommand {
     Send,
     Check,
+    Verify,
     Exit,
 }
 
@@ -70,6 +81,7 @@ impl UserCommand {
         match s_value {
             "Send" => UserCommand::Send,
             "Check" => UserCommand::Check,
+            "Verify" => UserCommand::Verify,
             "Exit" => UserCommand::Exit,
             _ => panic!("Unknown value: {}", value),
         }
@@ -107,6 +119,12 @@ pub fn encode_id(id: String) -> String {
 }
 
 /// Remove the padding from the ID field
+pub fn decode_id(message: String) -> String {
+    let id = str::replace(&message, "Y", "");
+    return id;
+}
+
+/// Remove the padding from the ID field
 pub fn decode_id_response(message: String) -> String {
     return str::replace(&message, "Y", "");
 }
@@ -135,6 +153,17 @@ pub fn encode_message(flag : Flag, sockip : String, id : String, msg : String) -
     let msg_convert : &[u8] = msg.as_bytes();
     println!("\tmessage encoded: {:?}", &msg_convert);
     concat_u8(flag_convert, &concat_u8(sockip_convert.as_bytes(), &concat_u8(id_convert.as_bytes(), msg_convert)))
+}
+
+/// Decode the message received
+pub fn decode_message(msg : &[u8]) -> (Flag, String, String, String){
+    println!("SSSDL111 .{:?}.", msg);
+    let flag = Flag::from_u8(msg[0]); // get the flag
+    let sockip_encoded = std::str::from_utf8(&msg[1..21]).unwrap();
+    let id_encoded = std::str::from_utf8(&msg[22..31]).unwrap();
+    let msg = std::str::from_utf8(&msg[32..]).unwrap();
+    let sockip = decode_sockip(sockip_encoded.to_string());
+    (flag, decode_sockip(sockip.to_string()), decode_id(id_encoded.to_string()), msg.to_string())
 }
 
 /// This function creates a wallet and make it listen for the user input
@@ -185,6 +214,10 @@ impl Wallet {
                 UserCommand::Check => {
                     println!("Response: {}\n", self.handle_user_input(command, "".to_string(), "".to_string()));
                 }
+                UserCommand::Verify => {
+                    let message = splitted[1].to_string();
+                    println!("Response: {}\n", self.handle_user_input(command, "".to_string(), message.to_string()));
+                }
                 UserCommand::Exit => {
                     println!("Response: {}\n", "Ok".to_string());
                     break;
@@ -218,6 +251,17 @@ impl Wallet {
             UserCommand::Check => {
                 //let response = self.send_message(miner.to_string(), "".to_string(), Flag::Check);
                 return "Check ok".to_string();
+            }
+            UserCommand::Verify => {
+                let array: &[u8] = &message.as_bytes();
+                let vector: Vec<u8> = array.iter().cloned().collect();
+                let b = self.verify_transaction(vector);
+                let resp: String;
+                match b {
+                    True => resp = "Transaction is verified !".to_string(),
+                    False => resp = "Transaction is not correct !".to_string(),
+                }
+                return resp;
             }
             _ => "Unknown command".to_string()
         }
@@ -267,7 +311,105 @@ impl Wallet {
             } 
         }
     }
+
+    /// Function to decode a single Block that was sended via a TCP connection
+    /// * `encoded_block` - a string containing the info of a block
+    /// Return the input data as a Block struct as defined
+    pub fn decode_block(&self, encoded_block: String) -> block::Block {
+        let new_block = block::Block::from_str(&encoded_block).unwrap();
+        return new_block;
+    }
+
+    /// Function to decode the Blockchain sended via a TCP connection by the Miner
+    /// * `stream` - a TCPStream containing the data that needs to be handled
+    /// * `blocks` - a vector representing the Blockchain
+    /// Update the `blocks` variable by adding every received block to it
+    pub fn handle_blockchain(&self, mut stream: TcpStream, blocks: &mut Vec<block::Block>) -> bool {
+        let mut data = [0 as u8; 500];
+        match stream.read(&mut data) {
+            Ok(size) if size > 0 => {
+                let tuple : (Flag, String, String, String) = decode_message(&data);
+                let new_block = self.decode_block(tuple.3);
+                blocks.push(new_block);
+                return true;
+            },
+            Ok(_) => { return false; },
+            Err(e) => {
+                println!("Error occured, closing connection: {}", e);
+                stream.shutdown(Shutdown::Both).unwrap();
+                return false;
+            }
+        }
+    }
+
+    /// Function to get the Blockchain from our Miner
+    /// Returns the whole Blockchain
+    pub fn get_blockchain_from_miner(&self) -> Vec<block::Block> {
+        let miner = &self.miner;
+        let socket = &self.socket;
+        println!("Asking {} for wallet ID", miner);
+        let listener = TcpListener::bind(socket).unwrap();
+        // Ask the ID
+        if let Ok(mut stream) = TcpStream::connect(&miner) {
+            let m: &[u8] = &encode_message(Flag::RequireBlockchain, socket.to_string(), "".to_string(), "".to_string());
+            match stream.write(m) {
+                Ok(_) => { println!("Asked for Blockchain"); }
+                Err(e) => { println!("Error: {}", e); }
+            }
+        }
+        
+        println!("Getting Blockchain from Miner");
+        let mut blockchain: Vec<block::Block>;
+        blockchain = Vec::new();
+        // Handle the response
+        let mut i = 0;
+        for stream in listener.incoming() {
+            match stream {
+                Ok(stream) => {
+                    let not_empty = self.handle_blockchain(stream, &mut blockchain);
+                    if(!not_empty) {
+                        i += 1;
+                    } else {
+                        i = 0;
+                    }
+                    if(i == 5) {
+                        return blockchain;
+                    }
+                }
+                Err(e) => {
+                    panic!("Error: {}", e);
+                }
+            }
+        }
+        return blockchain;
+    }
+
+    /// Function to verify if a transaction is valid
+    /// 
+    pub fn verify_transaction(&self, transaction: Vec<u8>) -> bool {
+        // First get the Blockchain from Miner
+        let blockchain = self.get_blockchain_from_miner();
+        let mut hashchain: Vec::<Vec<u8>> = Vec::new();
+        for block in blockchain.iter() {
+            hashchain.push(block.hash.clone());
+        }
+        // Then transform it into a Merkle Tree
+        static digest: &'static Algorithm = &ring::digest::SHA256;
+        let merkle_tree = merkle::MerkleTree::from_vec(digest, hashchain);
+        // Check if the transaction is known by the Merkel tree
+        let proof = merkle_tree.gen_proof(transaction);
+        match proof {
+            Some(x) => {
+                return x.validate(merkle_tree.root_hash());
+            }
+            None => {
+                return false;
+            }
+        }
+    }
 }
+
+
 
 impl Debug for Wallet {
     fn fmt (&self, f: &mut Formatter) -> fmt::Result {

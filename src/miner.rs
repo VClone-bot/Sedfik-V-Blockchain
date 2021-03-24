@@ -17,6 +17,8 @@ use std::str::FromStr;
 #[path="./wallet.rs"]
 mod wallet;
 
+/// Used for signaling what kind of requests we are sending when networking
+/// 
 #[derive(Copy, Clone)]
 pub enum Flag {
     /// Ok -> Network
@@ -34,9 +36,15 @@ pub enum Flag {
     MineTransaction,
     OkMineTransaction,
     RequireWalletID,
+    RequireBlockchain,
+    SendBlockchain,
 }
 
+
 impl Flag {
+    /// Simple function to convert a integer to a Flag
+    /// Used when receiving/sending a message as primary types are easier to pass than objects
+    /// 
     fn from_u8(value: u8) -> Flag {
         match value {
             0 => Flag::Ok,
@@ -53,6 +61,8 @@ impl Flag {
             11 => Flag::MineTransaction,
             12 => Flag::OkMineTransaction,
             13 => Flag::RequireWalletID,
+            14 => Flag::RequireBlockchain,
+            15 => Flag::SendBlockchain,
             _ => panic!("Unknown value: {}", value),
         }
     }
@@ -116,7 +126,7 @@ const REFRESH_TIME: u64 = 15;
 /// Size of the block payload
 const BLOCK_PAYLOAD_SIZE: usize = 5;
 /// Difficulty of mining
-const MINING_DIFFICULTY: usize = 6;
+const MINING_DIFFICULTY: usize = 1;
 
 /// Util
 /// Concat u8 array
@@ -582,6 +592,12 @@ impl Miner {
                             Err(e) => println!("Err: {}", e),
                         }
                         self.add_to_wallets(next_id, sender_sockip);
+                    }
+                    Flag::RequireBlockchain => {
+                        println!("Required Blockchain hashes");
+                        for block in self.blocks.iter() {
+                            self.send_message(&sender_sockip, &block.to_string(), Flag::SendBlockchain);
+                        }
                     }
                     _ => { println!("Error: flag not recognized"); }
                 } 
