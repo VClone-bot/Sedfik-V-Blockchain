@@ -80,6 +80,12 @@ Un mineur est composé:
 * `wallets`: une HashSet contenant la liste de tous les wallets connectés à ce mineur
 * `payload`: les informations de la blockchain
 * `current_block_id`: l'ID du block en cours de minage
+### Wallet
+
+Un wallet est composé de 
+* `socket`: l'adresse IP sur laquelle le wallet écoute
+* `miner`: l'adresse IP du mineur auquel le wallet est associé
+* `id`: l'id du mineur
 
 ### Transaction
 
