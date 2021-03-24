@@ -3,6 +3,7 @@
 **BARTHET Virgile, RAMOS Valentin, ROUFF Simon** :pencil: 
 
 [Lien du repo Github](https://github.com/VClone-bot/Sedfik-V-Blockchain/tree/master) 
+
 [Lien de la documentation technique (page WEB)](https://vclone-bot.github.io/Sedfik-V-Blockchain/blockchain/index.html)
 
 ## Présentation du projet
@@ -113,6 +114,9 @@ Ces flags sont utilisés pour la communication entre les différents éléments 
 |MineTransaction|Flag d'information pour lancer le minage d'un block|
 |OkMineTransaction|Flag Ack pour MineTransaction|
 |RequireWalletID|Demande le prochain Id pour un Wallet|
+|RequireBlockchain|L'arbre de Merkle demande au mineur la blockchain pour la vérifier|
+|SendBlockchain| L'arbre de Merkle envoie la blockchain au mineur une fois vérifiée|
+
 ## Checklist :pencil: 
 - [X] Mineur
     - [x] créer un mineur
