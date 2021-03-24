@@ -137,7 +137,6 @@ Ces flags sont utilisés pour la communication entre les différents éléments 
 - [ ] Minage 
     - [x] Algo de minage
     - [x] Vérifier le calcul
-    - [ ] Threader le minage pour que le mineur puisse fonctionner pendant qu'il mine
 - [x] Arbre de Merkel
     - [x] Vérifier si une transaction est faite (l'intégrité)
 
